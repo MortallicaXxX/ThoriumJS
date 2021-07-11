@@ -1,0 +1,22 @@
+{
+  "name": "thoriumjs",
+  "version": "1.0.0",
+  "description": "Framework client-side javascrit",
+  "main": "compil.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "build": "node build.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MortallicaXxX/ThoriumJS.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MortallicaXxX/ThoriumJS/issues"
+  },
+  "homepage": "https://github.com/MortallicaXxX/ThoriumJS#readme"
+}
