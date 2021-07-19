@@ -1,6 +1,6 @@
 {
   "name": "thoriumjs",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "Framework client-side javascrit",
   "main": "compil.js",
   "directories": {
@@ -21,10 +21,5 @@
   "homepage": "https://github.com/MortallicaXxX/ThoriumJS#readme",
   "dependencies": {
     "package": "^1.0.1"
-  },
-  "buildVersion": {
-    "history": [
-      "major - 1.0.0 to 2.0.0 at 19/6/2021 20:36:28.730"
-    ]
   }
 }

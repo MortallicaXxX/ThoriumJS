@@ -1,3 +1,287 @@
+class ThoriumConsole{
+
+  styles = {
+    w : "border: 1px solid red;color: red;", // messages warning
+    type1 : "background: green;color: white;",
+    type2 : "background: blue;color: white;",
+    type3 : "background: orange;color: white;",
+    type4 : "background: red;color: white;",
+  };
+
+  constructor(){
+
+  }
+
+}
+
+ThoriumConsole.prototype.setStyle = function (name,def) {
+  try{
+    if(this.styles[name])throw {err:1,msg:"Il semblerait que ce style existe déjà", style:this.style[name] , name:name};
+    this.styles[name] = def;
+  }catch(err){
+    console.error(err);
+  }
+};
+
+ThoriumConsole.prototype.removeStyle = function () {
+  try{
+    delete this.styles[name];
+  }catch(err){
+    console.error(err);
+  }
+};
+
+
+ThoriumConsole.prototype.log = function (message=null,style=null) {
+
+  try{
+
+    if(typeof style == "object")throw {err:1,msg:"Le style doit être un string correspondant au style ou au nom d'un style définis"}
+
+    if(this.styles[style])console.log(`%c${message}`,this.styles[style]);
+    else console.log(`%c${message}`,style);
+
+  }catch(err){
+    console.error(err);
+  }
+
+};
+
+
+class ModelAnimation{
+
+  constructor(name,time,arg,option,entity){
+    this.name = name;
+    this.loopTime = time;
+    if(arg.start){
+      this.running = arg.start;
+      this.start = arg.start;
+      entity.current = this;
+      delete arg.start;
+    }
+    this.arg = arg;
+    this.option = option;
+    this.entity = entity;
+  }
+
+  name = null;
+  loopTime = null;
+  arg = null;
+  option = null;
+  entity = null;
+  startTime = null;
+  running = null; // si l'animation est déjà en fonctionnement au moment de sa création
+  start = null; // passage de stop à start
+
+}
+
+ModelAnimation.prototype.update = function() {
+  var self = this;
+  if(this.running == true && this.start == false)this.Start();
+  if(this.start == true){
+    if(this.running == false)this.running = true;
+    if(this.start == false)this.start = true;
+    var ecart = Date.now() - this.startTime;
+    ecart = new Date(ecart).getSeconds();
+    var pourcentage = (ecart/this.loopTime)*100;
+    this.animate(pourcentage);
+    // ecart = ecart*0.001;
+    if(ecart >= this.loopTime){
+
+      this.Stop();
+      if(this.option == "infinite")this.Start();
+      // this.Start();
+    }
+  }
+}
+
+ModelAnimation.prototype.Start = function () {
+  this.startTime = Date.now();
+  this.running = true;
+  this.start = true;
+};
+
+ModelAnimation.prototype.Stop = function () {
+  this.startTime = null;
+  this.running = false;
+  this.start = false;
+};
+
+ModelAnimation.prototype.animate = function (pourcentage) {
+
+  try{
+    // console.log(this.arg[pourcentage]);
+    if(this.arg[pourcentage]){
+      for(var layerName of Object.keys(this.arg[pourcentage])){
+        for(var propName of Object.keys(this.arg[pourcentage][layerName])){
+          // console.log(this.arg[pourcentage][layerName][propName]);
+          if(!this.entity.model.layers[layerName].dom)this.entity.model.layers[layerName].dom = document.getElementById(layerName);
+          // console.log(this.entity.model.layers[layerName]);
+          this.entity.model.layers[layerName].dom.style[propName] = this.arg[pourcentage][layerName][propName];
+        }
+      }
+    }
+  }catch(err){
+
+  }
+
+};
+
+/*
+*
+*
+*
+*/
+class ModelLayer{
+
+  constructor(name, layer , modelParent = null){
+    this.name = name;
+    this.layer = layer;
+    if(modelParent)this.model = modelParent;
+  }
+
+}
+
+/*
+*
+*
+*
+*/
+class EntityModel{
+
+  layers = {}
+
+  constructor(){
+
+  }
+
+}
+
+EntityModel.prototype.addLayer = function (name,layer) {
+  var self = this;
+  self.layers[name] = new ModelLayer(name,layer,self);
+};
+
+/*
+*
+*
+*
+*/
+class Entity{
+
+  position = thorium.vec2();
+  model = null;
+  animations = {};
+  current = null;
+
+  constructor(name){
+    var self = this;
+    self.name = name;
+    self.model = new EntityModel();
+    self.template = self.render()
+  }
+
+}
+
+Entity.prototype.update = function () {
+  var self = this;
+  if(self.current)self.current.update();
+};
+
+Entity.prototype.render = function () {
+  var self = this;
+
+  var result = [] , x = Object.keys(self.model.layers) , xLength = x.length - 1 , i = 0;
+  if(xLength <= 0)return result;
+  for(var layerName of x){
+    result.push(self.model.layers[layerName].layer);
+    if(i == xLength){
+      return {
+        type:'div',
+        prop:{id:self.name},
+        childrens : result
+      };
+    }
+    i++;
+  }
+
+  // var layerLoader = new Promise(function(next){
+  //     var result = [] , x = Object.keys(self.model.layers) , xLength = x.length - 1 , i = 0;
+  //     if(xLength <= 0)next(result)
+  //     for(var layerName of x){
+  //       result.push(self.model.layers[layerName].layer);
+  //       if(i == xLength)next(result);
+  //       i++;
+  //     }
+  // })
+  //
+  // var result = {
+  //   type:'div',
+  //   prop:{id:self.name},
+  //   childrens : await layerLoader
+  // };
+  //
+  // // console.log(result);
+  //
+  // return result;
+};
+
+Entity.prototype.addLayer = function (name,layer) {
+  this.model.addLayer(name,layer);
+  this.template = this.render();
+  return this.model.addLayer(name,layer);
+};
+
+Entity.prototype.addAnimation = function (time,arg,option) {
+  var name = String(arg.name);
+  delete arg.name;
+  this.animations[name] = new ModelAnimation(name,time,arg,option,this);
+  return this.animations[name];
+};
+
+Entity.prototype.animationStart = function (name) {
+  this.animation[name].start();
+};
+
+Entity.prototype.animationStop = function (name) {
+  this.animation[name].stop();
+};
+
+
+class ThoriumEntitites{
+
+  list = {};
+
+  constructor(root){
+    this.root = root;
+  }
+
+}
+
+ThoriumEntitites.prototype.initialise = function (arg) {
+  // console.log("ThoriumEntitites.prototype.initialise à faire !!");
+  console.log("%cThoriumEntitites.prototype.initialise à faire !!", "border: 1px solid red;color: red;");
+};
+
+ThoriumEntitites.prototype.update = function (arg) {
+  var self = this;
+  for(var entityName of Object.keys(self.list)){
+    // if(self.list[entityName])
+    // console.log(self.list[entityName]);
+    self.list[entityName].update();
+
+  }
+
+};
+
+ThoriumEntitites.prototype.entity = function(name){
+  return new Entity(name)
+}
+
+ThoriumEntitites.prototype.addEntity = function(entity){
+  this.list[entity.name] = entity;
+}
+
 class ThoriumCaches{
 
   data = {
@@ -24,4 +308,3548 @@ class ThoriumCaches{
     if(root)this.root = root;
   }
 
+}
+
+class FILTRES{
+
+  elements = {};
+  constructor(root = null){
+    var self = this;
+    if(root)self.root = root;
+
+    var filter = new UI([
+      {
+        type:'div',
+        prop:{id:'thorium-filterUI'},
+      }
+    ]);
+
+    filter.buildIn(document.getElementsByTagName('body')[0])
+    .then(function(){
+      self.dom = document.getElementById('thorium-filterUI');
+    })
+
+    addCss('thorium-filter',[
+      "#thorium-filterUI {",
+        "position: absolute;",
+        "display:none;",
+        "height: -webkit-fill-available;",
+        "width: -webkit-fill-available;",
+        "top: 0;",
+        "left: 0;",
+        "z-index: 50;",
+      "}",
+
+      "#thorium-filterUI.active {",
+        "display:block;",
+      "}",
+
+      ".bbox-filter-container {",
+        "position: absolute;",
+        "display: grid;",
+        "transition:0.08s;",
+        "--vertical-line:calc(var(--self-height)*0.8);",
+        "--horizontal-line:calc(var(--self-width)*0.8);",
+      "}",
+
+      ".bbox-filter-container:hover {",
+        "background-color:rgba(100,149,237,0.5);",
+      "}",
+
+      ".bbox-filter-container div {",
+        "height: 1px;",
+        "width: 1px;",
+        "background-color: cornflowerblue;",
+        "grid-column:1;",
+        "grid-row:1;",
+        "opacity:0;",
+      "}",
+
+      ".bbox-filter-container:hover div{",
+        "opacity:1;",
+      "}",
+
+      ".bbox-filter-container div[name='top'] {",
+        "margin:auto;",
+        "margin-top:0;",
+        "width: var(--horizontal-line);",
+      "}",
+
+      ".bbox-filter-container div[name='left'] {",
+        "margin:auto;",
+        "margin-left:0;",
+        "height: var(--vertical-line);",
+      "}",
+
+      ".bbox-filter-container div[name='bottom'] {",
+        "margin:auto;",
+        "margin-bottom:0;",
+        "width: var(--horizontal-line);",
+      "}",
+
+      ".bbox-filter-container div[name='right'] {",
+        "margin:auto;",
+        "margin-right:0;",
+        "height: var(--vertical-line);",
+      "}",
+
+      ".bbox-filter-container div[name='center'] {",
+        "height:5px;",
+        "width:5px;",
+        "margin:auto;",
+        "background-color: lime;",
+      "}",
+    ])
+
+  }
+
+}
+
+FILTRES.prototype.updateOne = function (element) {
+  var self = this , id = element.th.id;
+  if(!self.elements[id]){
+    var title = element.tagName.toLowerCase();
+    if(element.getAttribute('id') != "" && element.getAttribute('id') != null)title += "#"+element.getAttribute('id');
+    if(element.getAttribute('class') != "" && element.getAttribute('class') != null)title += "."+element.getAttribute('class');
+    var filtreUI = new UI([
+      {type:'div',prop:{id:'filter-'+id,class:'bbox-filter-container',tag:element.tagName,title:title},childrens:[
+        {type:'div',prop:{name:'top'}},
+        {type:'div',prop:{name:'left'}},
+        {type:'div',prop:{name:'bottom'}},
+        {type:'div',prop:{name:'right'}},
+        {type:'div',prop:{name:'center'}},
+      ]}
+    ])
+    filtreUI.buildIn(self.dom)
+    .then(function(){
+      self.elements[id] = {dom : document.getElementById('filter-'+id)};
+      var dom = self.elements[id].dom;
+      var p = element.position.get();
+
+      dom.style.setProperty('--self-height',p.height+'px');
+      dom.style.setProperty('--self-width',p.width+'px');
+      dom.style.top = p.global.top+'px';
+      dom.style.left = p.global.left+'px';
+      dom.style.height = p.height+'px';
+      dom.style.width = p.width+'px';
+      dom.style.zIndex = element.nodeID.get();
+    })
+  }else{
+    var p = element.position.get();
+    const filtre = document.getElementById('filter-'+id);
+    filtre.style.setProperty('--self-height',p.height+'px');
+    filtre.style.setProperty('--self-width',p.width+'px');
+    filtre.style.top = p.global.top+'px';
+    filtre.style.left = p.global.left+'px';
+    filtre.style.height = p.height+'px';
+    filtre.style.width = p.width+'px';
+  }
+};
+
+FILTRES.prototype.delete = function () {
+
+};
+
+FILTRES.prototype.show = function () {
+
+};
+
+FILTRES.prototype.hide = function () {
+
+};
+
+class PLATFORM{
+
+  mobile = false;
+
+  constructor(root = null){
+    if(root)this.root = root;
+    this.mobile = this.isMobile();
+    this.navigator();
+  }
+}
+
+PLATFORM.prototype.isMobile = function () {
+  return (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|ipad|iris|kindle|Android|Silk|lge |maemo|midp|mmp|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino/i.test(navigator.userAgent)
+      || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(navigator.userAgent.substr(0,4)) ? true : false);
+};
+
+PLATFORM.prototype.navigator = function () {
+  this.appCodeName = navigator.appCodeName;
+  this.appName = navigator.appName;
+  this.appVersion = navigator.appVersion;
+  this.bluetooth = navigator.bluetooth;
+  this.clipboard = navigator.clipboard;
+  this.connection = navigator.connection;
+  this.cookieEnabled = navigator.cookieEnabled;
+  this.credentials = navigator.credentials;
+  this.deviceMemory = navigator.deviceMemory;
+  this.doNotTrack = navigator.doNotTrack;
+  this.geolocation = navigator.geolocation;
+  this.hardwareConcurrency = navigator.hardwareConcurrency;
+  this.hid = navigator.hid;
+  this.keyboard = navigator.keyboard;
+  this.language = navigator.language;
+  this.languages = navigator.languages;
+  this.locks = navigator.locks;
+  this.managed = navigator.managed;
+  this.maxTouchPoints = navigator.maxTouchPoints;
+  this.mediaCapabilities = navigator.mediaCapabilities;
+  this.mediaDevices = navigator.mediaDevices;
+  this.mediaSession = navigator.mediaSession;
+  this.mimeTypes = navigator.mimeTypes;
+  this.onLine = navigator.onLine;
+  this.permissions = navigator.permissions;
+  this.platform = navigator.platform;
+  this.plugins = navigator.plugins;
+  this.presentation = navigator.presentation;
+  this.product = navigator.product;
+  this.productSub = navigator.productSub;
+  this.scheduling = navigator.scheduling;
+  this.serial = navigator.serial;
+  this.serviceWorker = navigator.serviceWorker;
+  this.storage = navigator.storage;
+  this.usb = navigator.usb;
+  this.userActivation = navigator.userActivation;
+  this.userAgent = navigator.userAgent;
+  this.userAgentData = navigator.userAgentData;
+  this.vendor = navigator.vendor;
+  this.vendorSub = navigator.vendorSub;
+  this.wakeLock = navigator.wakeLock;
+  this.webdriver = navigator.webdriver;
+  this.webkitPersistentStorage = navigator.webkitPersistentStorage;
+  this.webkitTemporaryStorage = navigator.webkitTemporaryStorage;
+  this.xr = navigator.xr;
+};
+
+class STATS{
+  constructor(root = null){
+    var self = this;
+    self.stats = this.initialise();
+    if(root)self.root = root;
+    var statsUI = new UI([{
+      type:'div',
+      prop:{
+        id:'thorium-statsUI',
+      },
+      proto:{
+        onMouseDown : function(e){
+          this.selfDrag();
+        }
+      },
+      childrens:[{
+        type:'div',
+        prop:{
+          id:'statsUI-header',
+        },
+        childrens:[
+          {type:'div',prop:{class:'statsUI-header-btn',text:th_caches.svg.close,style:"grid-column:2;"}},
+          {type:'div',prop:{class:'statsUI-header-btn',text:th_caches.svg.close,style:"grid-column:3;"}},
+          {type:'div',prop:{class:'statsUI-header-btn',text:th_caches.svg.close,style:"grid-column:4;"}},
+        ]
+      }]
+    }])
+    statsUI.buildIn(document.getElementsByTagName('body')[0])
+    .then(function(){
+      self.dom = document.getElementById('thorium-statsUI');
+      self.dom.appendChild(self.stats.dom);
+      self.#__add_css();
+      // document.body.appendChild( this.stats.dom );
+      self.stats.showPanel( 1 );
+      self.stats.isShow = false;
+      requestAnimationFrame( self.animate );
+    })
+  }
+
+  #__add_css = function(self = this){
+    var styleSheet = document.createElement("style")
+    styleSheet.setAttribute('id','thorium-stats');
+    styleSheet.type = "text/css";
+    styleSheet.innerText = self.#style.join(" ");
+    document.head.appendChild(styleSheet);
+  }
+
+  #style=[
+    "#thorium-statsUI{",
+      "position: absolute;",
+      "background-color: ghostwhite;",
+      "display: none;",
+      "border: 1px solid black;",
+      "filter: drop-shadow(1px 1px 10px lightgray);",
+      "z-index: 100;",
+    "}",
+
+    "#thorium-statsUI.active{",
+      "display: grid;",
+    "}",
+
+    "#statsUI-header{",
+      "height: 1vw;",
+      "display: grid;",
+      "grid-template-columns: 1fr max-content max-content max-content;",
+      "background-color: lightgray;",
+    "}",
+
+    ".statsUI-header-btn{",
+      "display: grid;",
+      "height: 0.8vw;",
+      "width: 0.8vw;",
+      "margin: auto;",
+      "margin-right: 0.2vw;",
+      "opacity: 0.4;",
+    "}"
+
+  ]
+
+}
+
+STATS.prototype.initialise = function(){
+  var metrics = function(){
+    (function (global, factory) { /** @author mrdoob / http://mrdoob.com/ */
+      typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+      typeof define === 'function' && define.amd ? define(factory) :
+      (global.Stats = factory());
+      }(this, (function () { 'use strict';
+      var Stats = function () {
+
+        var mode = 0;
+
+        var container = document.createElement( 'div' );
+        container.setAttribute('id','stats-container')
+        // container.style.cssText = 'position:fixed;top:0;left:0;cursor:pointer;opacity:0.9;z-index:10000';
+        container.addEventListener( 'click', function ( event ) {
+
+          event.preventDefault();
+          showPanel( ++ mode % container.children.length );
+
+        }, false );
+
+        //
+
+        function addPanel( panel ) {
+
+          container.appendChild( panel.dom );
+          return panel;
+
+        }
+
+        function showPanel( id ) {
+
+          for ( var i = 0; i < container.children.length; i ++ ) {
+
+            // container.children[ i ].style.display = i === id ? 'block' : 'none';
+
+          }
+
+          mode = id;
+
+        }
+
+        //
+
+        var beginTime = ( performance || Date ).now(), prevTime = beginTime, frames = 0;
+
+        var fpsPanel = addPanel( new Stats.Panel( 'FPS', '#0ff', '#002' ) );
+        var msPanel = addPanel( new Stats.Panel( 'MS', '#0f0', '#020' ) );
+
+        if ( self.performance && self.performance.memory ) {
+
+          var memPanel = addPanel( new Stats.Panel( 'MB', '#f08', '#201' ) );
+
+        }
+
+        showPanel( 0 );
+
+        return {
+
+          REVISION: 16,
+
+          dom: container,
+
+          addPanel: addPanel,
+          showPanel: showPanel,
+
+          begin: function () {
+
+            beginTime = ( performance || Date ).now();
+
+          },
+
+          end: function () {
+
+            frames ++;
+
+            var time = ( performance || Date ).now();
+
+            msPanel.update( time - beginTime, 200 );
+            this.frameRate = time - beginTime;
+
+            if ( time >= prevTime + 1000 ) {
+
+              fpsPanel.update( ( frames * 1000 ) / ( time - prevTime ), 100 );
+
+              prevTime = time;
+              this.fps = frames;
+              frames = 0;
+
+              if ( memPanel ) {
+
+                var memory = performance.memory;
+                this.memory = {
+                  use : memory.usedJSHeapSize / 1048576,
+                  limit : memory.jsHeapSizeLimit / 1048576
+                };
+                memPanel.update( memory.usedJSHeapSize / 1048576, memory.jsHeapSizeLimit / 1048576 );
+
+              }
+
+            }
+            // console.log(time);
+            return time;
+
+          },
+
+          update: function () {
+
+            beginTime = this.end();
+
+          },
+
+          // Backwards Compatibility
+
+          domElement: container,
+          setMode: showPanel
+
+        };
+
+      };
+
+      Stats.Panel = function ( name, fg, bg ) {
+
+        var min = Infinity, max = 0, round = Math.round;
+        var PR = round( window.devicePixelRatio || 1 );
+
+        var WIDTH = 80 * PR, HEIGHT = 48 * PR,
+            TEXT_X = 8 * PR, TEXT_Y = 4 * PR,
+            GRAPH_X = 3 * PR, GRAPH_Y = 15 * PR,
+            GRAPH_WIDTH = 74 * PR, GRAPH_HEIGHT = 30 * PR;
+
+        var canvas = document.createElement( 'canvas' );
+        canvas.width = "80";
+        canvas.height = "48";
+        canvas.style.cssText = 'width:5vw;height:3.5vw';
+
+        var context = canvas.getContext( '2d' );
+        context.font = 'bold ' + ( 9 * PR ) + 'px Helvetica,Arial,sans-serif';
+        context.textBaseline = 'top';
+
+        context.fillStyle = bg;
+        context.fillRect( 0, 0, WIDTH, HEIGHT );
+
+        context.fillStyle = fg;
+        context.fillText( name, TEXT_X, TEXT_Y );
+        context.fillRect( GRAPH_X, GRAPH_Y, GRAPH_WIDTH, GRAPH_HEIGHT );
+
+        context.fillStyle = bg;
+        context.globalAlpha = 0.9;
+        context.fillRect( GRAPH_X, GRAPH_Y, GRAPH_WIDTH, GRAPH_HEIGHT );
+
+        return {
+
+          dom: canvas,
+
+          update: function ( value, maxValue ) {
+
+            min = Math.min( min, value );
+            max = Math.max( max, value );
+
+            context.fillStyle = bg;
+            context.globalAlpha = 1;
+            context.fillRect( 0, 0, WIDTH, GRAPH_Y );
+            context.fillStyle = fg;
+            context.fillText( round( value ) + ' ' + name + ' (' + round( min ) + '-' + round( max ) + ')', TEXT_X, TEXT_Y );
+
+            context.drawImage( canvas, GRAPH_X + PR, GRAPH_Y, GRAPH_WIDTH - PR, GRAPH_HEIGHT, GRAPH_X, GRAPH_Y, GRAPH_WIDTH - PR, GRAPH_HEIGHT );
+
+            context.fillRect( GRAPH_X + GRAPH_WIDTH - PR, GRAPH_Y, PR, GRAPH_HEIGHT );
+
+            context.fillStyle = bg;
+            context.globalAlpha = 0.9;
+            context.fillRect( GRAPH_X + GRAPH_WIDTH - PR, GRAPH_Y, PR, round( ( 1 - ( value / maxValue ) ) * GRAPH_HEIGHT ) );
+
+          }
+
+        };
+
+      };
+
+      return Stats;
+
+    })))
+    return new Stats();
+  }
+  return metrics();
+}
+
+STATS.prototype.update = function(){
+  this.fps = this.stats.fps;
+  this.memory = this.stats.memory;
+  this.frameRate = this.stats.frameRate;
+}
+
+STATS.prototype.setInstructions = function(f){
+  try{
+    if(typeof f != "function")throw {err:1,msg:"le parametre entrant n'est pas une fonction" , f:f };
+    this.instruction = f;
+  }catch(err){
+    console.error(err);
+  }
+}
+
+STATS.prototype.loadInstructions = function(f){
+  if(this.instruction)return this.instruction(this);
+}
+
+STATS.prototype.animate = function () {
+  thorium.stats.start();
+  thorium.stats.loadInstructions(thorium.stats);
+  thorium.frameUpdate();
+  thorium.stats.stop();
+  thorium.stats.update();
+  requestAnimationFrame( thorium.stats.animate );
+};
+
+STATS.prototype.start = function () {
+  this.stats.begin();
+};
+
+STATS.prototype.stop = function () {
+  this.stats.end();
+};
+
+STATS.prototype.showPanel = function ( panelNumber = null) {
+  try{
+    if(!Number(panel)) throw{err:1,msg:"panelNumber n'est pas un int" , desc :"pour choisir le panel à afficher passer un nombre (0: fps, 1: ms, 2: mb, 3+: custom)" , panelNumber:panelNumber};
+    stats.showPanel( 1 );
+  }catch(err){
+    console.error(err);
+  }
+};
+
+STATS.prototype.show = function () {
+  this.dom.turnActive();
+};
+
+STATS.prototype.hide = function () {
+  this.dom.turnActive();
+};
+
+/*
+*@{name}th_var "thorium variables"
+*@{type}class
+*@{desc}th est la class présente dans tout les DOMelement passer entre les mains de thoriumJS , elle contient
+        toute les variables personaliser en interne ainsi que toute les fonctions interne
+        au DOMelement. Les fonctions et variables de th sont référencer dans le DOMelement, il est donc possible d'y
+        acceder directement ex : DOMelment."nom de variable || fonction".
+*/
+class th_var{
+
+  constructor(value){
+    this.#value = value;
+    this.type = this.typedef(value);
+  }
+
+  #value;
+  type;
+
+  get(){
+    return this.#value;
+  }
+
+  set(value){
+    this.#value = value;
+  }
+
+}
+
+th_var.prototype.typedef = function (value) {
+  if(typeof value == 'object'){ // si value est un "object"
+    if(Array.isArray(value) == true){ // si value est un Array
+      return "array";
+    }
+    else{ // si value est un Object
+      return typeof value;
+    }
+  }
+  else if(!isNaN(new Number(value))){ // si value est un nombre
+    if(typeof value == 'boolean') return typeof value; // si il est aussi égal à un bool c'est uqe c'est un bool true = 1 , false = 0
+    else return typeof Number(0); // sinon c'est un nombre
+  }
+  else if (typeof value == 'boolean'){ // si value est un boolean
+    return typeof value;
+  }
+  else return typeof String("");  // sinon c'est un string
+};
+
+
+/*
+*@{name}th
+*@{type}class
+*@{desc}th est la class présente dans tout les DOMelement passer entre les mains de thoriumJS , elle contient
+        toute les variables personaliser en interne ainsi que toute les fonctions interne
+        au DOMelement. Les fonctions et variables de th sont référencer dans le DOMelement, il est donc possible d'y
+        acceder directement ex : DOMelment."nom de variable || fonction".
+*/
+class THORUS{
+
+  constructor(elementHTML , elementRef , ui){
+    if(elementHTML != null && elementRef != null)return new this.th(elementHTML , elementRef , ui);
+  }
+
+  th_key_comparator = {
+    keys : [
+      "onInitialise",
+      "onUpdate",
+      "onClick",
+      "onDblClick",
+      "onMouseEnter",
+      "onMouseLeave",
+      "onMouseMove",
+      "onMouseOut",
+      "onMouseOver",
+      "onMouseUp",
+      "onMouseDown",
+      "onMouseWheel",
+      "onAfterScriptExecute",
+      "onFrameUpdate",
+      "onResize",
+    ],
+    findByKey : function(key){
+      for(var keyName of this.keys){
+        if(key == keyName.toLowerCase())return keyName;
+      }
+    }
+  }
+
+  th = function(elementHTML , elementRef , ui){
+    const self = this;
+    // self.id = elementRef.id;
+    // self.root = ui.root;
+    self.e = elementHTML;
+
+    // liste des fonction "type" à appliquer à TOUT DOMelment
+    var th_proto = {
+      nodeID : null,
+      // varibale qui détermine si l'élément est actif ou non
+      active : false,
+      // variable contenant les position locales et globales de l'élément
+      position : {},
+      // fonction d'envois de l'information d'initialisation dans la chaine d'éléments
+      initialise : function(arg = null){
+        this.e.updateNodeID();
+        this.e.updatePosition();
+        for(const htmlChildren of this.e.children){
+          try{
+            if(!htmlChildren.th)throw {err:1,msg:"Il semblerait qu'un élément n'ai pas été référencer et prototyper correctement",element:htmlChildren,th:htmlChildren.th,proto:htmlChildren.__proto__}
+            htmlChildren.th.initialise(arg);
+          }
+          catch(err){
+            // console.error(err);
+          }
+          try{ // block qui essaye d'envoyer une instruction à onUpdate si définis
+            htmlChildren.th.onInitialise(arg);
+          }catch(err){
+          }
+        }
+      },
+      // fonction d'update de la chaine des éléments
+      update : function(arg = null){
+        this.e.updateNodeID();
+        if(htmlChildren.th)this.e.updatePosition(); // ne se propage pas si pas un prototype conforme
+        for(const htmlChildren of this.e.children){
+          try{
+            if(!htmlChildren.th)throw {err:1,msg:"Il semblerait qu'un élément n'ai pas été référencer et prototyper correctement",element:htmlChildren,th:htmlChildren.th,proto:htmlChildren.__proto__}
+            htmlChildren.th.update(arg);
+          }
+          catch(err){
+            console.error(err);
+          }
+        }
+        try{ // block qui essaye d'envoyer une instruction à onUpdate si définis
+          this.onUpdate(arg = null)
+        }catch(err){
+        }
+      },
+      //
+      updateNodeID : function(){
+        var parentnodeid;
+        try{
+          parentnodeid = this.e.parentNode.nodeID.get();
+          this.e.nodeID.set(parentnodeid++);
+        }catch(err){
+          // parentnodeid n'est pas définis
+          this.e.nodeID.set(1);
+        }
+      },
+      // fonction d'update de la position de l'élement dans l'espace
+      updatePosition : function(){
+
+        var boundingBox = this.e.getBoundingClientRect();
+
+        var position = {
+          x : boundingBox.x,
+          y : boundingBox.y,
+          height : boundingBox.height,
+          width : boundingBox.width,
+          centre : thorium.vec2({ x : (boundingBox.x + boundingBox.width/2) , y : (boundingBox.y + boundingBox.height/2)}),
+          margin : {
+            top : cssToValue(this.cssProp('margin-top')),
+            left : cssToValue(this.cssProp('margin-left')),
+            bottom : cssToValue(this.cssProp('margin-bottom')),
+            right : cssToValue(this.cssProp('margin-right')),
+          },
+          padding : {
+            top : cssToValue(this.cssProp('padding-top')),
+            left : cssToValue(this.cssProp('padding-left')),
+            bottom : cssToValue(this.cssProp('padding-bottom')),
+            right : cssToValue(this.cssProp('padding-right')),
+          },
+          global : {
+            top : boundingBox.top,
+            left : boundingBox.left,
+            bottom : boundingBox.bottom,
+            right : boundingBox.right
+          }
+        }
+
+        this.e.position.set(position);
+        thorium.filters.updateOne(this.e)
+
+      },
+      //
+      frameUpdate : function(arg = null){
+
+        for(var e of this.e.children){
+
+          try{
+            e.frameUpdate(arg);
+          }catch(err){
+
+          }
+
+        }
+
+        try{
+          this.e.onFrameUpdate(arg)
+        }catch(err){
+
+        }
+      },
+      //
+      resize : function(arg = null){
+        for(const htmlChildren of this.e.children){
+          try{
+            if(!htmlChildren.th)throw {err:1,msg:"Il semblerait qu'un élément n'ai pas été référencer et prototyper correctement",element:htmlChildren,th:htmlChildren.th,proto:htmlChildren.__proto__}
+            htmlChildren.th.resize(arg);
+          }
+          catch(err){
+            console.error(err);
+          }
+        }
+        try{ // block qui essaye d'envoyer une instruction à onUpdate si définis
+          this.onResize(arg = null)
+        }catch(err){
+        }
+      },
+      // fonction de suppression et déréférencement de GUI
+      destroy : async function(){
+        for await(const enfants of this.e.children){
+          enfants.destroy(this.id);
+        }
+        this.root.uids.deleteOne(this.id);
+      },
+      // fonction qui rend l'élément dragable SI il est absolute
+      selfDrag : function(box_header) {
+        var elmnt = this.e;
+        var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        if (box_header) {// Si header specifier , la box bougera à partir du header
+          box_header.onmousedown = dragMouseDown;
+        } else {         // Sinon la div bougera de n'importe où à l'interier d'elle même
+          elmnt.onmousedown = dragMouseDown;
+        }
+
+        function dragMouseDown(e) {
+          e = e || window.event;
+          e.preventDefault();
+          // get the mouse cursor position at startup:
+          pos3 = e.clientX;
+          pos4 = e.clientY;
+          document.onmouseup = closeDragElement;
+          // call a function whenever the cursor moves:
+          document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+          e = e || window.event;
+          e.preventDefault();
+          // calculate the new cursor position:
+          pos1 = pos3 - e.clientX;
+          pos2 = pos4 - e.clientY;
+          pos3 = e.clientX;
+          pos4 = e.clientY;
+          // set the element's new position:
+          elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+          elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+        }
+
+        function closeDragElement() {
+          // stop moving when mouse button is released:
+          document.onmouseup = null;
+          document.onmousemove = null;
+        }
+      },
+      // fonction qui ajoute ou retire le mot clef "active" à la class de l'élément
+      turnActive : function() {
+        var element = this.e;
+        if(element.active.get() == false){
+          element.classList.add('active');
+          element.active.set(true);
+        }
+        else {
+          element.classList.remove('active');
+          element.active.set(false);
+        }
+      },
+      radioLike : function(){
+        this.e.turnActive();
+        for(var e of this.e.parentNode.children){
+          var active = e.active.get();
+          if(active == true && e != this.e)e.turnActive();
+        }
+      },
+      getNodeId : function(){
+        const self = this;
+        var id = self.id;
+        for(var i = 0 ; i <= self.e.parentNode.children.length ; i++){
+          if(self.e.parentNode.children[i].th.id == id)return i;
+        }
+        return null;
+      },
+      //
+      findElementsByName : function(name = null , result = []){
+        var element = this.e;
+        try{
+          if(!name)throw {err:1,msg:"name ne peut être vide",name:name};
+          if(element.getAttribute('name') == name)result.push(element);
+          if(element.children.length != 0){
+            for(var e of element.children){
+              e.findByName(name , result);
+            }
+          }
+          else{
+            return result;
+          }
+        }catch(err){
+          console.error(err);
+        }
+      },
+      // fonction qui retourne la propriete css définie dans le fichier css
+      cssProp : function(propName = null) {
+        try{
+          if(!propName)throw {err:1,msg:"Le nom de propriété ne peut être null" , propName : propName}
+          const styles = window.getComputedStyle(this.e);
+          return styles[propName];
+        }
+        catch(err){
+          console.error(err);
+        }
+      }
+    }
+
+    // boucle qui vas créer le "getter"/referencement du DOMelement ver les fonction proto "type" de th
+    // le choix de méthode de référence dépend de si la référence pointe vers une fonction ou une variable
+    for(const protoName of Object.keys(th_proto)){
+      self[protoName] = th_proto[protoName];
+      if(typeof self[protoName]  == 'function'){ // si fonction
+        try{ // rejet et avertissement si le nom de la propriete est déjà existante dans le DOMelement
+          if(self.e[protoName])throw {err : 1 , msg : `le nom de propiété "${protoName}" du proto fait référence à un champ déjà existant dans DOMelment` , name : protoName , DOMelement : elementHTML[protoName] , proto : th_proto}
+          self.e[protoName] = function(){ // création de la fonction qui servira de getter
+            return self[protoName]();
+          }
+        }catch(err){
+          console.error(err);
+        }
+      }else{ // si variable
+        try{ // rejet et avertissement si le nom de la propriete est déjà existante dans le DOMelement
+          if(self.e[protoName])throw {err : 1 , msg : `le nom de propiété "${protoName}" du proto fait référence à un champ déjà existant dans DOMelment` , name : protoName , DOMelement : elementHTML[protoName] , proto : th_proto}
+          // self.e[protoName] = function(){ // création de la fonction qui servira de getter
+          //   self.e[protoName] = self[protoName];
+          // }
+          self[protoName] = new th_var(self[protoName]);
+          self.e[protoName] = self[protoName];
+        }catch(err){
+          console.error(err);
+        }
+      }
+    }
+/*
+  X  afterscriptexecute event (en-US)
+  *  auxclick event (en-US)
+  *  beforescriptexecute event (en-US)
+  *  blur event (en-US)
+  X  click event
+  *  compositionend event
+  *  compositionstart event
+  *  compositionupdate event
+  *  contextmenu event
+  *  copy event
+  *  cut event (en-US)
+  X  dblclick event
+  *  DOMActivate event (en-US)
+  *  DOMMouseScroll event (en-US)
+  *  error event
+  *  focusin event
+  *  focusout event
+  *  focus event (en-US)
+  *  fullscreenchange event (en-US)
+  *  fullscreenerror event (en-US)
+  *  gesturechange event (en-US)
+  *  gestureend event (en-US)
+  *  gesturestart event (en-US)
+  *  keydown event (en-US)
+  *  keypress event (en-US)
+  *  keyup event (en-US)
+  X  mousedown event
+  X  mouseenter event
+  X  mouseleave event
+  X  mousemove event
+  X  mouseout event
+  X  mouseover event
+  X  mouseup event
+  X  mousewheel event (en-US)
+  *  msContentZoom event (en-US)
+  *  MSGestureChange event (en-US)
+  *  MSGestureEnd event (en-US)
+  *  MSGestureHold event (en-US)
+  *  MSGestureStart event (en-US)
+  *  MSGestureTap event (en-US)
+  *  MSInertiaStart event (en-US)
+  *  MSManipulationStateChanged event (en-US)
+  *  overflow event (en-US)
+  *  paste event (en-US)
+  *  scroll event (en-US)
+  *  select event
+  *  show event (en-US)
+  *  touchcancel event (en-US)
+  *  touchend event (en-US)
+  *  touchmove event (en-US)
+  *  touchstart event (en-US)
+  *  underflow event (en-US)
+  *  webkitmouseforcechanged event (en-US)
+  *  webkitmouseforcedown event (en-US)
+  *  webkitmouseforceup event (en-US)
+  *  webkitmouseforcewillbegin event (en-US)
+  *  wheel event (en-US)
+*/
+    var th_handlers = {
+      click : function(e = null){ // fonction sur click de l'élément
+        try{
+          self.onClick(e)
+        }catch(err){
+          // console.log(e);
+        }
+      },
+      dblclick : function(e = null){ // fonction sur double click de l'élément
+        try{
+          self.onDblClick(e)
+        }catch(err){
+          // console.log(e);
+        }
+      },
+      mouseenter : function(e = null){ // fonction d'entrée du curseur sur l'élément
+        try{
+          self.onMouseEnter(e)
+        }catch(err){
+          // console.log(e);
+        }
+      },
+      mouseleave : function(e = null){ // fonction de sortie du curseur sur l'élément
+        try{
+          self.onMouseLeave(e)
+        }catch(err){
+          // console.log(e);
+        }
+      },
+      mousemove : function(e = null){ // fonction de passage du curseur sur l'élément
+        try{
+          self.onMouseMove(e);
+        }catch(err){
+          // console.log(err);
+        }
+      },
+      mouseout : function(e = null){ // fonction
+        try{
+          self.onMouseOut (e);
+        }catch(err){
+          // console.log(err);
+        }
+      },
+      mouseover : function(e = null){ // fonction de positionnement du curseur sur l'élement
+        try{
+          self.onMouseOver(e);
+        }catch(err){
+          // console.log(err);
+        }
+      },
+      mouseup : function(e = null){ // fonction du relachement du click sur l'élément
+        try{
+          self.onMouseUp(e);
+        }catch(err){
+          // console.log(err);
+        }
+      },
+      mousedown : function(e = null){ // fonction d'appuis du click sur l'élément
+        try{
+          self.onMouseDown(e);
+        }catch(err){
+          // console.log(err);
+        }
+      },
+      mousewheel : function(e = null){ // fonction si action de la roulette sur l'élément
+        try{
+          self.onMouseWheel(e);
+        }catch(err){
+          // console.log(err);
+        }
+      },
+      afterscriptexecute : function(e = null){ // fonction qui se lance après l'exécution d'un script
+        try{
+          self.onAfterScriptExecute(e);
+        }catch(err){
+          // console.log(err);
+        }
+      }
+    }
+
+    for(const listenerName of Object.keys(th_handlers)){
+      try{
+        elementHTML.addEventListener(listenerName,function(e){th_handlers[listenerName](e)})
+      }catch(err){
+      }
+    }
+
+    // boucle qui vas créer le "getter"/referencement du DOMelement ver le proto "personalisé" de th
+    // le choix de méthode de référence dépend de si la référence pointe vers une fonction ou une variable
+    if(elementRef.proto) for (const protoName of Object.keys(elementRef.proto)){
+      self[protoName] = elementRef.proto[protoName];
+      if(typeof self[protoName]  == 'function'){ // si fonction
+        try{ // rejet et avertissement si le nom de la propriete est déjà existante dans le DOMelement
+          if(self.e[protoName])throw {err : 1 , msg : `le nom de propiété "${protoName}" du proto fait référence à un champ déjà existant dans DOMelment` , name : protoName , DOMelement : elementHTML[protoName] , proto : elementRef.proto}
+          self.e[protoName] = function(){ // création de la fonction qui servira de getter
+            return self[protoName]();
+          }
+        }catch(err){
+          console.error(err);
+        }
+      }else{ // si variable
+        try{ // rejet et avertissement si le nom de la propriete est déjà existante dans le DOMelement
+          if(self.e[protoName])throw {err : 1 , msg : `le nom de propiété "${protoName}" du proto fait référence à un champ déjà existant dans DOMelment` , name : protoName , DOMelement : elementHTML[protoName] , proto : elementRef.proto}
+          // self.e[protoName] = function(){ // création de la fonction qui servira de getter
+          //   self.e[protoName] = self[protoName];
+          // }
+          // if(typeof self[protoName] == 'boolean')self.e[protoName] = new Boolean(self[protoName])
+          // else self.e[protoName] = self[protoName];
+          self[protoName] = new th_var(self[protoName]);
+          self.e[protoName] = self[protoName];
+
+          // self.e[protoName] = self[protoName];
+        }catch(err){
+          console.error(err);
+        }
+      }
+    };
+
+  }
+
+  parse = async function(element , elementRef , ui){
+    var elementRef = {proto : {}};
+    var self = this;
+    for await(const attributeName of element.getAttributeNames()){
+
+      /* gestion des variables internes */
+      if(attributeName[0] == "v" && attributeName[1] == ":"){
+        const v = element.getAttribute(attributeName);
+        elementRef.proto[attributeName.split('v:').join('')] = v;
+        element.removeAttribute(attributeName);
+      }
+
+      /* gestion des fonctions internes */
+      if(attributeName[0] == "f" && attributeName[1] == ":"){
+        const f = element.getAttribute(attributeName);
+        // const functionName = self.th_key_comparator.findByKey(attributeName.split('f:').join(''));
+        //
+        // if(functionName == undefined)functionName = attributeName.split('f:').join('');
+
+        const functionName = (self.th_key_comparator.findByKey(attributeName.split('f:').join('')) != undefined ? self.th_key_comparator.findByKey(attributeName.split('f:').join('')) : attributeName.split('f:').join(''));
+
+        elementRef.proto[functionName] = function(){
+          return eval(`(${f})`)(element.th);
+        };
+        element.removeAttribute(attributeName);
+      }
+    }
+
+    console.log(elementRef);
+
+    if(!element.th){
+      element.th = new THORUS( element , elementRef , ui);
+    }
+    if(element.children){
+      for await(const e of element.children){
+        await this.parse(e);
+      }
+    }
+  }
+
+}
+
+class ThoriumMath{
+
+  vec2 = (function inject(clean, precision, undef) {
+
+    var isArray = function (a) {
+      return Object.prototype.toString.call(a) === "[object Array]";
+    };
+
+    var defined = function(a) {
+      return a !== undef;
+    };
+
+    function Vec2(x, y) {
+      if (!(this instanceof Vec2)) {
+        return new Vec2(x, y);
+      }
+
+      if (isArray(x)) {
+        y = x[1];
+        x = x[0];
+      } else if('object' === typeof x && x) {
+        y = x.y;
+        x = x.x;
+      }
+
+      this.x = Vec2.clean(x || 0);
+      this.y = Vec2.clean(y || 0);
+    }
+
+    Vec2.prototype = {
+      name:"Vec2",
+      type:'Math',
+      change : function(fn) {
+        if (typeof fn === 'function') {
+          if (this.observers) {
+            this.observers.push(fn);
+          } else {
+            this.observers = [fn];
+          }
+        } else if (this.observers && this.observers.length) {
+          for (var i=this.observers.length-1; i>=0; i--) {
+            this.observers[i](this, fn);
+          }
+        }
+
+        return this;
+      },
+
+      ignore : function(fn) {
+        if (this.observers) {
+          if (!fn) {
+            this.observers = [];
+          } else {
+            var o = this.observers, l = o.length;
+            while(l--) {
+              o[l] === fn && o.splice(l, 1);
+            }
+          }
+        }
+        return this;
+      },
+
+      // set x and y
+      set: function(x, y, notify) {
+        if('number' != typeof x) {
+          notify = y;
+          y = x.y;
+          x = x.x;
+        }
+
+        if(this.x === x && this.y === y) {
+          return this;
+        }
+
+        var orig = null;
+        if (notify !== false && this.observers && this.observers.length) {
+          orig = this.clone();
+        }
+
+        this.x = Vec2.clean(x);
+        this.y = Vec2.clean(y);
+
+        if(notify !== false) {
+          return this.change(orig);
+        }
+      },
+
+      // reset x and y to zero
+      zero : function() {
+        return this.set(0, 0);
+      },
+
+      // return a new vector with the same component values
+      // as this one
+      clone : function() {
+        return new (this.constructor)(this.x, this.y);
+      },
+
+      // negate the values of this vector
+      negate : function(returnNew) {
+        if (returnNew) {
+          return new (this.constructor)(-this.x, -this.y);
+        } else {
+          return this.set(-this.x, -this.y);
+        }
+      },
+
+      // Add the incoming `vec2` vector to this vector
+      add : function(x, y, returnNew) {
+
+        if (typeof x != 'number') {
+          returnNew = y;
+          if (isArray(x)) {
+            y = x[1];
+            x = x[0];
+          } else {
+            y = x.y;
+            x = x.x;
+          }
+        }
+
+        x += this.x;
+        y += this.y;
+
+
+        if (!returnNew) {
+          return this.set(x, y);
+        } else {
+          // Return a new vector if `returnNew` is truthy
+          return new (this.constructor)(x, y);
+        }
+      },
+
+      // Subtract the incoming `vec2` from this vector
+      subtract : function(x, y, returnNew) {
+        if (typeof x != 'number') {
+          returnNew = y;
+          if (isArray(x)) {
+            y = x[1];
+            x = x[0];
+          } else {
+            y = x.y;
+            x = x.x;
+          }
+        }
+
+        x = this.x - x;
+        y = this.y - y;
+
+        if (!returnNew) {
+          return this.set(x, y);
+        } else {
+          // Return a new vector if `returnNew` is truthy
+          return new (this.constructor)(x, y);
+        }
+      },
+
+      // Multiply this vector by the incoming `vec2`
+      multiply : function(x, y, returnNew) {
+        if (typeof x != 'number') {
+          returnNew = y;
+          if (isArray(x)) {
+            y = x[1];
+            x = x[0];
+          } else {
+            y = x.y;
+            x = x.x;
+          }
+        } else if (typeof y != 'number') {
+          returnNew = y;
+          y = x;
+        }
+
+        x *= this.x;
+        y *= this.y;
+
+        if (!returnNew) {
+          return this.set(x, y);
+        } else {
+          return new (this.constructor)(x, y);
+        }
+      },
+
+      // Rotate this vector. Accepts a `Rotation` or angle in radians.
+      //
+      // Passing a truthy `inverse` will cause the rotation to
+      // be reversed.
+      //
+      // If `returnNew` is truthy, a new
+      // `Vec2` will be created with the values resulting from
+      // the rotation. Otherwise the rotation will be applied
+      // to this vector directly, and this vector will be returned.
+      rotate : function(r, inverse, returnNew) {
+        var
+        x = this.x,
+        y = this.y,
+        cos = Math.cos(r),
+        sin = Math.sin(r),
+        rx, ry;
+
+        inverse = (inverse) ? -1 : 1;
+
+        rx = cos * x - (inverse * sin) * y;
+        ry = (inverse * sin) * x + cos * y;
+
+        if (returnNew) {
+          return new (this.constructor)(rx, ry);
+        } else {
+          return this.set(rx, ry);
+        }
+      },
+
+      // Calculate the length of this vector
+      length : function() {
+        var x = this.x, y = this.y;
+        return Math.sqrt(x * x + y * y);
+      },
+
+      // Get the length squared. For performance, use this instead of `Vec2#length` (if possible).
+      lengthSquared : function() {
+        var x = this.x, y = this.y;
+        return x*x+y*y;
+      },
+
+      // Return the distance betwen this `Vec2` and the incoming vec2 vector
+      // and return a scalar
+      distance : function(vec2) {
+        var x = this.x - vec2.x;
+        var y = this.y - vec2.y;
+        return Math.sqrt(x*x + y*y);
+      },
+
+      // Given Array of Vec2, find closest to this Vec2.
+      nearest : function(others) {
+        var
+        shortestDistance = Number.MAX_VALUE,
+        nearest = null,
+        currentDistance;
+
+        for (var i = others.length - 1; i >= 0; i--) {
+          currentDistance = this.distance(others[i]);
+          if (currentDistance <= shortestDistance) {
+            shortestDistance = currentDistance;
+            nearest = others[i];
+          }
+        }
+
+        return nearest;
+      },
+
+      // Convert this vector into a unit vector.
+      // Returns the length.
+      normalize : function(returnNew) {
+        var length = this.length();
+
+        // Collect a ratio to shrink the x and y coords
+        var invertedLength = (length < Number.MIN_VALUE) ? 0 : 1/length;
+
+        if (!returnNew) {
+          // Convert the coords to be greater than zero
+          // but smaller than or equal to 1.0
+          return this.set(this.x * invertedLength, this.y * invertedLength);
+        } else {
+          return new (this.constructor)(this.x * invertedLength, this.y * invertedLength);
+        }
+      },
+
+      // Determine if another `Vec2`'s components match this one's
+      // also accepts 2 scalars
+      equal : function(v, w) {
+        if (typeof v != 'number') {
+          if (isArray(v)) {
+            w = v[1];
+            v = v[0];
+          } else {
+            w = v.y;
+            v = v.x;
+          }
+        }
+
+        return (Vec2.clean(v) === this.x && Vec2.clean(w) === this.y);
+      },
+
+      // Return a new `Vec2` that contains the absolute value of
+      // each of this vector's parts
+      abs : function(returnNew) {
+        var x = Math.abs(this.x), y = Math.abs(this.y);
+
+        if (returnNew) {
+          return new (this.constructor)(x, y);
+        } else {
+          return this.set(x, y);
+        }
+      },
+
+      // Return a new `Vec2` consisting of the smallest values
+      // from this vector and the incoming
+      //
+      // When returnNew is truthy, a new `Vec2` will be returned
+      // otherwise the minimum values in either this or `v` will
+      // be applied to this vector.
+      min : function(v, returnNew) {
+        var
+        tx = this.x,
+        ty = this.y,
+        vx = v.x,
+        vy = v.y,
+        x = tx < vx ? tx : vx,
+        y = ty < vy ? ty : vy;
+
+        if (returnNew) {
+          return new (this.constructor)(x, y);
+        } else {
+          return this.set(x, y);
+        }
+      },
+
+      // Return a new `Vec2` consisting of the largest values
+      // from this vector and the incoming
+      //
+      // When returnNew is truthy, a new `Vec2` will be returned
+      // otherwise the minimum values in either this or `v` will
+      // be applied to this vector.
+      max : function(v, returnNew) {
+        var
+        tx = this.x,
+        ty = this.y,
+        vx = v.x,
+        vy = v.y,
+        x = tx > vx ? tx : vx,
+        y = ty > vy ? ty : vy;
+
+        if (returnNew) {
+          return new (this.constructor)(x, y);
+        } else {
+          return this.set(x, y);
+        }
+      },
+
+      // Clamp values into a range.
+      // If this vector's values are lower than the `low`'s
+      // values, then raise them.  If they are higher than
+      // `high`'s then lower them.
+      //
+      // Passing returnNew as true will cause a new Vec2 to be
+      // returned.  Otherwise, this vector's values will be clamped
+      clamp : function(low, high, returnNew) {
+        var ret = this.min(high, true).max(low);
+        if (returnNew) {
+          return ret;
+        } else {
+          return this.set(ret.x, ret.y);
+        }
+      },
+
+      // Perform linear interpolation between two vectors
+      // amount is a decimal between 0 and 1
+      lerp : function(vec, amount, returnNew) {
+        return this.add(vec.subtract(this, true).multiply(amount), returnNew);
+      },
+
+      // Get the skew vector such that dot(skew_vec, other) == cross(vec, other)
+      skew : function(returnNew) {
+        if (!returnNew) {
+          return this.set(-this.y, this.x)
+        } else {
+          return new (this.constructor)(-this.y, this.x);
+        }
+      },
+
+      // calculate the dot product between
+      // this vector and the incoming
+      dot : function(b) {
+        return Vec2.clean(this.x * b.x + b.y * this.y);
+      },
+
+      // calculate the perpendicular dot product between
+      // this vector and the incoming
+      perpDot : function(b) {
+        return Vec2.clean(this.x * b.y - this.y * b.x);
+      },
+
+      // Determine the angle between two vec2s
+      angleTo : function(vec) {
+        return Math.atan2(this.perpDot(vec), this.dot(vec));
+      },
+
+      // Divide this vector's components by a scalar
+      divide : function(x, y, returnNew) {
+        if (typeof x != 'number') {
+          returnNew = y;
+          if (isArray(x)) {
+            y = x[1];
+            x = x[0];
+          } else {
+            y = x.y;
+            x = x.x;
+          }
+        } else if (typeof y != 'number') {
+          returnNew = y;
+          y = x;
+        }
+
+        if (x === 0 || y === 0) {
+          throw new Error('division by zero')
+        }
+
+        if (isNaN(x) || isNaN(y)) {
+          throw new Error('NaN detected');
+        }
+
+        if (returnNew) {
+          return new (this.constructor)(this.x / x, this.y / y);
+        }
+
+        return this.set(this.x / x, this.y / y);
+      },
+
+      isPointOnLine : function(start, end) {
+        return (start.y - this.y) * (start.x - end.x) ===
+               (start.y - end.y) * (start.x - this.x);
+      },
+
+      toArray: function() {
+        return [this.x, this.y];
+      },
+
+      fromArray: function(array) {
+        return this.set(array[0], array[1]);
+      },
+      toJSON: function () {
+        return {x: this.x, y: this.y};
+      },
+      toString: function() {
+        return '(' + this.x + ', ' + this.y + ')';
+      },
+      constructor : Vec2
+    };
+
+    Vec2.fromArray = function(array, ctor) {
+      return new (ctor || Vec2)(array[0], array[1]);
+    };
+
+    // Floating point stability
+    Vec2.precision = precision || 8;
+    var p = Math.pow(10, Vec2.precision);
+
+    Vec2.clean = clean || function(val) {
+      if (isNaN(val)) {
+        throw new Error('NaN detected');
+      }
+
+      if (!isFinite(val)) {
+        throw new Error('Infinity detected');
+      }
+
+      if(Math.round(val) === val) {
+        return val;
+      }
+
+      return Math.round(val * p)/p;
+    };
+
+    Vec2.inject = inject;
+
+    if(!clean) {
+      Vec2.fast = inject(function (k) { return k; });
+
+      // Expose, but also allow creating a fresh Vec2 subclass.
+      if (typeof module !== 'undefined' && typeof module.exports == 'object') {
+        module.exports = Vec2;
+      } else {
+        window.Vec2 = window.Vec2 || Vec2;
+      }
+    }
+    return Vec2;
+  })();
+
+  lerp = function(a = null,b = null,alpha = 0){
+    try{
+      if(alpha > 1 || alpha < 0)throw {err:2,msg:"Alpha doit être entre 0 et 1" , alpha : alpha}
+      if((Number.isNaN(a)==false && Number.isNaN(b)==false) && (typeof a == "number" && typeof b == "number")){ // dans le cas où les position sont des nombres
+        return a*(1-alpha)+b*alpha;
+      }
+      else if(a.__proto__.name == "Vec2" && b.__proto__.name == "Vec2"){
+        return a.distance(b,alpha);
+      }
+      else if(a.__proto__.name == "Vec3" && b.__proto__.name == "Vec3"){
+        return a.distance(b,alpha);
+      }else throw {err:1,msg:"Le format des donnée ne correspond pas à ce qui est attend, a et b doivent êtres un nombre , vec2 ou vec3." , a : a , b : b}
+    }catch(err){
+      console.error(err);
+    }
+  }
+
+}
+
+class KeyStat{
+
+  press;
+
+  constructor(callEvent){
+    this.key = callEvent.key;
+  }
+}
+
+class MouseStat{
+
+  press = false;
+  x = null;
+  y = null;
+  last = {
+    x : null,
+    y : null,
+    distance : null, // corespond à la longueur/distance du vecteur origine/dernierPoint à la nouvelle position
+    facteur : null // corespond à la puissance du déplacement ( % du déplacement par rapport à la résolution )
+  };
+  constructor(callEvent){
+    this.x = callEvent.x;
+    this.y = callEvent.y;
+  }
+}
+
+MouseStat.prototype.updatePosition = function (newCoord) {
+  try{
+    if(typeof newCoord != 'object' && (!newCoord.x || !newCoord.y))throw {err:1,msg:"Les coordonnée ne semblent pas être un vecteur 2D" , newCoord:newCoord , exemple : { x : 0 , y : 0 }};
+
+    this.last.x = this.x;
+    this.last.y = this.y;
+
+    this.x = newCoord.x;
+    this.y = newCoord.y;
+    this.path = newCoord.path;
+    this.last.distance = Math.sqrt( Math.pow((this.x - this.last.x),2) + Math.pow((this.y - this.last.y),2) )
+
+    try{
+      var facteur = thorium.screen.height * thorium.screen.width;
+      this.last.facteur = (this.last.distance/facteur)*100;
+    }catch(err){
+      console.log(err);
+    }
+
+  }catch(err){
+    console.error(err);
+  }
+};
+
+class Controls{
+
+  listeners = { // contient les listener qui font référence à un élément l'ayant déclarer
+    keydown : [],
+    keyup : [],
+    mousemove : [],
+    mousedown : [],
+    mouseup : []
+  };
+
+  constructor(root = null){
+    if(!root)console.error({warningMessage:"Attention le root de control est null, certain racourcis pourraient ne pas fonctionner"});
+    var self = this;
+    self.keys = {};
+    self.setHandlers();
+    if(root)self.root = root;
+  }
+
+  shortcutsDef = function(self){
+
+    try{
+      if(self.keys.ALT.press == true && self.keys.M.press == true){
+        if(self.root){
+          if(self.root.stats.isShow == false)self.root.stats.show();
+          else self.root.stats.hide();
+        }
+      }
+    }
+    catch(err){
+
+    }
+
+    try{
+      if(self.keys.ALT.press == true && self.keys.L.press == true){
+        if(self.root){
+          self.root.filters.dom.turnActive();
+        }
+      }
+    }
+    catch(err){
+      console.log(err);
+    }
+
+  };
+  get shortcuts(){return this.shortcutsDef(this)}
+  set shortcuts(f){
+    try {
+      if(typeof f != "function")throw {err:1,msg:"f n'est pas une fonction",f:f,typeof:typeof f}
+      this.shortcutsDef = f;
+    } catch (e) {
+      console.error(err);
+    }
+  }
+}
+
+Controls.prototype.setHandlers = function () {
+  var self = this;
+  window.addEventListener('keydown',async function(e){
+    if(!self.keys[e.key.toUpperCase()])self.keys[e.key.toUpperCase()] = new KeyStat(e);
+    self.keys[e.key.toUpperCase()].press = true;
+    self.isShortcuts();
+    for(var e of self.listeners.keydown){e.function(e.ref);}
+  })
+
+  window.addEventListener('keyup',async function(e){
+    if(!self.keys[e.key.toUpperCase()])self.keys[e.key.toUpperCase()] = new KeyStat(e);
+    self.keys[e.key.toUpperCase()].press = false;
+    for(var e of self.listeners.keyup){e.function(e.ref);}
+  })
+
+  window.addEventListener('mousemove',async function(e){
+    if(!self.mouse)self.mouse = new MouseStat(e);
+    self.mouse.updatePosition(e);
+    for(var e of self.listeners.mousemove){e.function(e.ref);}
+  })
+
+  window.addEventListener('mousedown',async function(e){
+    if(!self.mouse)self.mouse = new MouseStat(e);
+    self.mouse.press = true;
+    for(var e of self.listeners.mousedown){e.function(e.ref);}
+  })
+
+  window.addEventListener('mouseup',async function(e){
+    if(!self.mouse)self.mouse = new MouseStat(e);
+    self.mouse.press = false;
+    for(var e of self.listeners.mouseup){e.function(e.ref);}
+  })
+};
+
+Controls.prototype.isShortcuts = function () {
+  this.shortcutsDef(this);
+};
+
+Controls.prototype.addEventListener = function(listenerName,f,ref){
+  var self = this;
+  try{
+    if(!self.listeners[listenerName])throw {err:1,msg:"Le listenerName n'existe pas ou ne fais pas partie des listeners qui peuvent être utiliser de la minière faite ici.",listenerName:listenerName,listenersToUse:Object.keys(self.listeners)};
+    self.listeners[listenerName].push({function : f , ref : ref });
+    return {
+      id : self.listeners[listenerName].length-1 ,
+      name : listenerName,
+      parent : self.listeners[listenerName],
+      ref : self.listeners[listenerName][self.listeners[listenerName].length-1],
+      delete : function(){
+        const self = this;
+        return new Promise(async function(next){
+          thorium.controls.listeners[listenerName] = self.parent.splice(self.id,self.id);
+          next(true);
+        })
+      }
+    };
+  }catch(err){
+    console.error(err);
+    return null;
+  }
+}
+
+Controls.prototype.lerp = function(start,end,alpha){
+
+}
+
+class ScreenStat{
+
+  reference;
+  height;
+  width;
+
+  constructor(screen){
+    var self = this;
+    self.reference = document.children[0];
+    self.height = self.reference.clientHeight;
+    self.width = self.reference.clientWidth;
+    self.reference.style.setProperty('--thorium-default-height',self.height+'px');
+    self.reference.style.setProperty('--thorium-default-width',self.width+'px');
+
+    window.addEventListener('resize',function(e){
+      self.update();
+
+      try{
+        thorium.conf.app.update();
+      }catch(err){
+
+      }
+
+      try{
+        thorium.conf.app.resize();
+      }catch(err){
+
+      }
+
+    })
+  }
+
+}
+
+ScreenStat.prototype.update = function () {
+  this.height = this.reference.clientHeight;
+  this.width = this.reference.clientWidth;
+  this.reference.style.setProperty('--thorium-default-height',this.height+'px');
+  this.reference.style.setProperty('--thorium-default-width',this.width+'px');
+};
+
+/*
+*@{name}DATASTORAGE
+*@{type}class
+*@{desc}DATASTORAGE est la class s'occupant de la base de donnée en format nosql , elle peut prendre en parametre un object issus d'un processus
+*       mais aussi d'une base de donnée nosql, qui serra répliquer ici
+*/
+class DATASTORAGE{
+
+  #data = {}; // contient la db client-side
+  #update = false; // boll représentant la nécessité ou non de sauvegarder
+  #update_change = false; // boll representant le changement de update de false -> true ou true -> false mais pas false -> false ou true -> true
+  #update_eventTime = null; // eventTime de la dernière action ( insert , delete , save )
+
+  constructor(arg = null){
+    if(arg)this.initialise(arg);
+  }
+
+  initialise = function (arg) {
+    this.#data = JSON.parse(JSON.stringify(arg));
+  }
+
+  get data(){return this.#data} // retourne les data de la db
+  get update(){return this.#update} // retourne en bool l'état de changement true = un object a été inserer , false = rien n'as changer
+  get update_change(){return this.#update_change} // retourne un trigger true|false représentant le passage de update d'un état à l'autre
+  get update_eventTime(){return this.#update_eventTime} // retourne le dernier EventTime d'insert , delete , update ...
+
+};
+
+/*
+*@{name}insert
+*@{type}fonction
+*@{desc}insert est la fonction d'ajout dans la base de donnée, elle joue aussi le role d'update, car si la donnée existe déjà il vas la
+*       reecrire.
+*/
+DATASTORAGE.prototype.insert = function (arg) {
+
+  function insert_byKeys(obj,ref){
+    for(var key of Object.keys(obj)){
+      if(!ref[key])ref[key] = obj[key];
+      if(typeof obj[key] == 'object')insert_byKeys(obj[key],ref[key]);
+      else ref[key] = obj[key];
+    }
+  }
+  insert_byKeys(arg,this.data);
+  if(this.update == false)this.update_change = true;
+  this.update = true;
+  this.update_eventTime = Date.now();
+};
+
+/*
+*@{name}delete
+*@{type}fonction
+*@{desc}delete est la fonction de suppression d'une propriete dans la db. En supprimant la propriete la donnée est supprimer aussi.
+*/
+DATASTORAGE.prototype.delete = function (arg) {
+
+  function delete_byKeys(obj,ref){
+    for(var key of Object.keys(obj)){
+      if(typeof obj[key] == 'object')delete_byKeys(obj[key],ref[key]);
+      else delete ref[key];
+    }
+  }
+
+  delete_byKeys(arg,this.data);
+
+  if(this.update == false)this.update_change = true;
+  this.update = true;
+  this.update_eventTime = Date.now();
+};
+
+/*
+*@{name}UIelement
+*@{type}class
+*@{desc}UIelement est un élément "basique" de definition, il contient le type|tag de la balise , les attributs(props) ,
+        les enfants ( childrens ) qui est interpreté comme un UI , et proto qui contient les variables et fonction de
+        prototypage du DOMelement qui en serra générer.
+*/
+class UIelement{
+
+  constructor(e , root = null , parent = null){
+    // if(this.component) console.log('ici');
+    this.__proto__.ClassName = 'UIelement';
+    if(root)this.__proto__.root = root;
+    if(parent)this.__proto__.parent = parent;
+    this.normalise(e);
+  };
+
+}
+
+UIelement.prototype.initialise = function (arg = null) {
+  this.childrens.initialise(arg);
+}
+
+UIelement.prototype.update = function (arg = null) {
+  this.childrens.update(arg);
+}
+
+/*
+*@{name} fonction de normalisation du nouveau template ou element. Rejet si n'est pas un tableau
+*/
+UIelement.prototype.normalise = async function(definition = {}) {
+  var self = this;
+  try{ // rejet si différent de type Object
+    if(Array.isArray(definition)){
+      if(definition[0].__proto__.ClassName == "UIelement")definition = definition[0];
+      else throw {err:2,msg:"value est un tableau",value:definition,isArray:Array.isArray(definition),typeof:typeof definition};
+    }
+    if(typeof definition != 'object')throw {err:1,msg:"value n'est pas un object",value:definition,isArray:Array.isArray(definition),typeof:typeof definition};
+    // console.log(definition);
+    // if(definition.__proto__.ClassName == "UI")throw {err:3,msg:"value est un UI, comprenons qu'il serra ajouter en tant qu'enfant au parent"}
+    let i = 0;
+    for(var prop of Object.keys(definition)){
+      this[prop] = definition[prop];
+    }
+    // console.log(this);
+    if(this.childrens)this.childrens = new UI(this.childrens);
+    if(this.__proto__.root)self.id = await this.__proto__.root.setNewId(this);
+  }
+  catch(err){
+    console.error(err);
+    if(err.err == 3){
+      console.log(err);
+    }
+  }
+}
+
+UIelement.prototype.setId = function (id) {
+  this.__proto__.id = id;
+};
+
+UIelement.prototype.getId = function () {
+  return this.id;
+};
+
+/*
+*@{name}
+*/
+UIelement.prototype.find = function (querry) {
+  var element_courant = this;
+  return new Promise(async function(next){
+    var result = await element_courant.find_from_querry(querry);
+    if(result.find.length!=1)next(result.find);
+    else next(result.find[0]);
+  })
+};
+
+/*
+*@{name}
+*/
+UIelement.prototype.find_from_querry = function (querry,result) {
+  var self = this;
+  return new Promise(async function(next){
+    if(typeof result=='undefined')result={find:[],historique:{}};
+    var querrySelector = self.getQuerrySelector(querry);
+
+    // FILTRE DES CORESPONDANCE TAG , ID , CLASS
+    if(self.type.toUpperCase() == querrySelector.type.toUpperCase() && !result.historique[self.getId()]){ // si les type sont égaux
+      if(querrySelector.id && querrySelector.class){ // si id && class sont présent
+        if(self.prop.id && self.prop.id.toUpperCase() == querrySelector.id.toUpperCase() && self.prop.class.toUpperCase() == querrySelector.class.toUpperCase()){
+          result.historique[self.getId()] = true;
+          result.find.push(self) ;
+        }
+      }else{ // sinon si pas d'égalité ID et Class
+        if(querrySelector.id){ // si id est présent
+          try{
+            if(self.prop.id.toUpperCase() == querrySelector.id.toUpperCase()){ // si id est égal
+              result.historique[self.getId()] = true;
+              result.find.push(self) ;
+            }
+          }catch(err){}
+        }
+        else if(querrySelector.class){ // si class est présent
+            // console.log(querry,self.prop,result);
+          try{
+            if(self.prop.class.toUpperCase() == querrySelector.class.toUpperCase()){ // si class est égal
+              // console.log(self.prop.class.toUpperCase(),querrySelector.class.toUpperCase());
+              result.historique[self.getId()] = true;
+              result.find.push(self) ;
+            }
+          }catch(err){}
+        }
+        else{ // sinons si les types ne sont pas égaux
+          result.historique[self.getId()] = true;
+          result.find.push(self) ;
+        }
+      }
+    }
+    // Variable de sortie de Promesse
+
+    if(!self.childrens)self.childrens = new UI();
+    var x = self.childrens.templates , xLength = x.length - 1 , xI = 0;
+    //
+    if(self.childrens.templates.length == 0){
+      next(result)
+    }
+    else{
+      for await(const htmlE of self.childrens.templates){
+        // console.log(htmlE.type.toUpperCase(),querry);
+        Promise.resolve(
+          await htmlE.find_from_querry(querry,result)
+        ).then(async function(find_Result){
+          // PEUT ETRE UNE ERREUR //
+          if(find_Result && (typeof find_Result[0]!='undefined'))result.find.push(find_Result[0]);
+
+          // PEUT ETRE UNE ERREUR //
+
+          if(xLength == xI)next(result);
+          xI++;
+        })
+      }
+    }
+  })
+};
+
+UIelement.prototype.getQuerrySelector = function (querry) {
+  let q = {};
+  let querry_Splited = querry.split(/[\s,#,.]+/);
+  if(querry_Splited.length == 1){
+    q.type = querry_Splited[0];
+  }else{
+    q.type = querry_Splited[0];
+    if(querry_Splited.length == 3){
+      q.id = querry_Splited[1];
+      q.class = querry_Splited[2];
+    }
+    else if(querry_Splited.length == 2){
+      if(querry.split('#').length==2){
+        q.id = querry.split('#')[1]
+      }
+      if(querry.split('.').length==2){
+        q.class = querry.split('.')[1]
+      }
+    }
+  }
+  return q;
+};
+
+/*
+*@{name}UI
+*@{type}class
+*@{desc}UI est l'élément contenant , c'est à dire qu'il contient des UIelements. Il peut contenir ses templates , mais aussi son propre ui
+        si ui n'est pas définis , il serra interpreté que ui serra le template, à l'inverse si on définis ui , on peut y inserrer les templates
+*/
+class UI{
+  templates = {};
+  constructor(value , root = null , parent = null){
+    this.__proto__.ClassName = 'UI';
+    if(root) this.__proto__.root = root;
+    if(parent) this.__proto__.parent = parent;
+    if(!parent) parent = this;
+    this.ui = this.normalise(value , root , parent);
+    Object.assign(this.templates, this.ui);
+  }
+}
+
+UI.prototype.initialise = function (arg = null) {
+  for(var e of Object.keys(this.templates)){
+    this.templates[e].initialise(arg);
+  }
+}
+
+UI.prototype.update = function (arg = null) {
+  for(var e of Object.keys(this.templates)){
+    this.templates[e].update(arg);
+  }
+}
+
+/*
+*@{name} normalise
+*@{type} Array<UIelement>
+*@{descriptif} Fonction de normalisation du nouveau template ou element. Rejet si n'est pas un tableau
+*/
+UI.prototype.normalise = function(value = [] , root = null , parent = null) {
+  try{ // rejet si différent de type Array
+    if(value.__proto__.ClassName == "UI")value = value.ui;
+    if(!Array.isArray(value))throw {err:1,msg:"'value' n'est pas un tableau",value:value,isArray:Array.isArray(value),typeof:typeof value};
+    let i = 0;
+    for(var e of value){
+      value[i] = new UIelement(e , root , parent);
+      i++;
+    }
+    return value;
+  }
+  catch(err){
+    console.error(err);
+  }
+}
+
+/*
+*@{name} each
+*@{type}
+*@{descriptif}
+*/
+UI.prototype.each = function (f) {
+  var self = this;
+  return new Promise(async function(next){
+    try{
+      var xLength = (self.templates).length - 1 , xI = 0;
+      if(self.templates.length==0)throw 1;
+      else
+        for(const e of Object.keys(self.templates)){
+          if(typeof f != 'function')console.log(self.templates[e]);
+          else f(self.templates[e]);
+          if(xI==xLength)next();
+          xI++;
+        };
+    }catch(err){
+      switch (err) {
+        case 1:
+          console.log("Resultat.value est vide");
+          break;
+        default:
+          console.log(err);
+          break;
+      }
+    }
+  })
+};
+
+/*
+*@{name} buildIn
+*@{type}
+*@{descriptif} Fonction récursive qui génère en DOM sur base d'une roadmap OBJECT des éléments HTML dans un parent
+*/
+UI.prototype.buildIn = function(parent , template = null) {
+  // console.log(typeof toGenerate);
+  var self = this;
+  var toGenerate;
+  if(!template) toGenerate = self.ui;
+  else toGenerate = template.templates;
+
+  return new Promise(async function(done){
+    var i = 0 , length = toGenerate.length-1;
+    for await(const elem of toGenerate){
+      new Promise(async function(generate){
+        if (!elem.prop) { elem.prop = {} }
+        var child = document.createElement(elem.type);
+        for await (var propName of Object.keys(elem.prop)) {
+          if (propName != 'text') {
+            child.setAttribute(propName, elem.prop[propName]);
+          }else{
+            child.innerHTML=elem.prop[propName]
+          }
+        }
+        // child.__proto__._id = elem.id;
+        self._it(child,elem);
+        if(self.root)self.root.updateTargetElement(child)
+        parent.appendChild(child);
+        // parent.appendChild(child);
+        // console.log(elem);
+        try{
+          if(elem.childrens && elem.childrens.ui.length > 0){
+            try{
+              generate(await elem.childrens.buildIn(child))
+            }catch(err){
+            }
+          }else{generate(child)}
+        }
+        catch(err){
+          // console.error(err);
+          generate(child);
+        }
+      })
+      .then(function(value){
+        if(i==length){
+          done(parent);
+        }else{i++;}
+      })
+    }
+  })
+}
+
+/*
+*@{name} _It ( "prototypeIt" )
+*@{type}
+*@{descriptif} Fonction qui génère les prototypes d'un élément HTML sur base de son type et de la RoadMap
+*/
+UI.prototype._it = function(elementHTML , elementRef) {
+  elementHTML.th = new THORUS( elementHTML , elementRef , this)
+}
+
+UI.prototype.addTemplate = function (name = null , uielement = null) {
+  try{ // rejet si aucun nom ou uielement définis
+    if(!name) throw {err:1,msg:"name n'est pas renseignée",name:name};
+    if(!uielement)throw {err:2,msg:"uielement n'est pas renseignée",uielement:uielement};
+    if(!this.templates)this.templates = {};
+    if(this.templates[name])throw {err:3,msg:"ce nom de template pour ce parent existe déjà , doublon impossible veuillez utiliser 'updateTemplate()' à la place",uielement:uielement,template:templates[name]};
+    this.templates[name] = uielement;
+  }catch(err){
+    console.error(err);
+  }
+}
+
+/*
+*@{name} setUI
+*@{type} VOID
+*@{descriptif} Fonciton qui permet de déffinir GUI.UI
+*/
+UI.prototype.setUI = function (f) {
+  f(this);
+}
+
+UI.prototype.getUI = function () {
+  return this.ui[0];
+};
+
+/*
+*@{name}ID_UIelements
+*@{type}class
+*@{desc}ID_UIelements est la class de référencement de tout les UIelement générer par l'interface , elle possède ses fonction d'ajout ,
+        de recherche et de suppression. Les référence contienne les accès à l'élément de roadMap ainsi que le DOMelement
+*/
+class ID_UIelements{
+
+  constructor(){}
+
+  #UID = { }
+
+  get UID(){return this.#UID}
+
+
+  setNewElementId(element) {
+    var self = this;
+    var newId = Math.round(Math.random()*100000000);
+    if(!self.#UID[newId]){
+      self.#UID[newId] = { element : element , target : null};
+      self.#UID.__proto__.length = Object.keys(self.#UID).length;
+      return newId;
+    }
+    else return self.setNewElementId(element);
+  };
+
+  updateTargetElement(target){
+    try{
+      var self = this;
+      return Promise.resolve(self.#UID[target.th.id].target = target)
+    }catch(err){
+
+    }
+  }
+
+  findById(id) {
+    return this.#UID[id];
+  };
+
+  findElementById(id) {
+    return this.#UID[id].target;
+  };
+
+  findReferenceById(id) {
+    return this.#UID[id].element;
+  };
+
+  deleteOne(id = null) {
+    try{
+      if(!this.#UID[id])throw {err:1 , msg :`id ne peut pas être null` , id : id};
+      this.#UID[id].target.remove();
+      delete this.#UID[id];
+    }catch(err){
+      console.log(err);
+    }
+  }
+
+  destroy() {
+    this.#UID = {};
+  }
+
+}
+
+/*
+*@{name}GUI
+*@{type}class
+*@{desc}GUI est le root de l'interface, c'est un UI mais avec des méthodes qui mettent en relation les différentes méthodes
+        présente dans ses propriétés. Il ne peut y avoir qu'un GUI par page. thoriumJS vas dans ce sens du moins.
+*/
+class GUI{
+
+  constructor(ui = null , root = null){
+    this.__proto__.ClassName = 'GUI';
+    if(ui)this.ui = new UI(ui,this);
+    if(root)this.root = root;
+  }
+
+  uids = new ID_UIelements();
+
+}
+
+GUI.prototype.initialise = function (arg = null) {
+  for(var e of this.templates){
+    e.initialise(arg);
+  }
+}
+
+GUI.prototype.update = function (arg = null) {
+  for(var e of this.templates){
+    e.update(arg);
+  }
+}
+
+/*
+*@{name} buildIn
+*@{type} REFERENCE
+*@{descriptif} Fonction de référence qui appel GUI.UI.buildIn()
+*/
+GUI.prototype.buildIn = function (target , template = null) {
+  return Promise.resolve(this.ui.buildIn(target , template));
+}
+
+/*
+*@{name} setNewId
+*@{type} REFERENCE
+*@{descriptif} fonction de référence qui appel GUI.uids.setNewId()
+*/
+GUI.prototype.setNewId = function (e) {
+  return this.uids.setNewElementId(e)
+};
+
+/*
+*@{name} updateTargetElement
+*@{type} REFERENCE
+*@{descriptif} fonction de référence qui appel GUI.uids.updateTargetElement()
+*/
+GUI.prototype.updateTargetElement = function(target){
+  this.uids.updateTargetElement(target);
+}
+
+/*
+*@{name} findElementById
+*@{type} REFERENCE
+*@{descriptif} fonction de référence qui appel GUI.uids.findById() afin de retourner l'élément HTML , la référence ou les deux par ID
+*/
+GUI.prototype.findElementById = function (id = null , arg = null) {
+  try{
+
+    if(!id)throw { err: 1 , msg: 'id ne peut pas être null' , id: id }
+    if(arg && arg != 'element' && arg != 'reference')throw { err: 1 , msg: 'si arg renseigné, il doit être un string égal à "element" ou "reference"' , arg: arg }
+
+    if(arg == 'element') return this.uids.findElementById(id);
+    else if(arg == 'reference') return this.uids.findReferenceById(id);
+    else return this.uids.findById(id);
+  }catch(err){
+    console.error(err);
+  }
+};
+
+// /*
+// *@{name}
+// *@{type} REFERENCE
+// *@{descriptif}
+// */
+// GUI.prototype.deleteElemen = function (id = null , arg = null) {
+//   try{
+//
+//     if(!id)throw { err: 1 , msg: 'id ne peut pas être null' , id: id }
+//     if(arg && arg != 'element' && arg != 'reference')throw { err: 1 , msg: 'si arg renseigné, il doit être un string égal à "element" ou "reference"' , arg: arg }
+//
+//     if(arg == 'element') return this.uids.findElementById(id);
+//     else if(arg == 'reference') return this.uids.findReferenceById(id);
+//     else return this.uids.findById(id);
+//   }catch(err){
+//     console.error(err);
+//   }
+// };
+
+/*
+*@{name} setUI
+*@{type} VOID
+*@{descriptif} Fonciton qui permet de déffinir GUI.UI
+*/
+GUI.prototype.setUI = function (f) {
+  this.uids.destroy();
+  f(this)
+}
+
+/*
+*@{name} addTemplate
+*@{type} VOID
+*@{descriptif} Fonction d'ajout d'un templatte à GUI
+*/
+GUI.prototype.addTemplate = function (name = null , uielement = null) {
+  try{ // rejet si aucun nom ou uielement définis
+    if(!name) throw {err:1,msg:"name n'est pas renseignée",name:name};
+    if(!uielement)throw {err:2,msg:"uielement n'est pas renseignée",uielement:uielement};
+    if(!this.templates)this.templates = {};
+    if(this.templates[name])throw {err:3,msg:"ce nom de template pour ce parent existe déjà , doublon impossible veuillez utiliser 'updateTemplate()' à la place",uielement:uielement,template:templates[name]};
+    this.templates[name] = uielement;
+  }catch(err){
+    console.error(err);
+  }
+}
+
+/*
+*@{name}
+*@{type}
+*@{descriptif}
+*/
+class THORIUM_ENGINE{
+
+  gui = null;
+  db = new DATASTORAGE();
+  conf = {
+    app : null,
+    parent : document.body
+  };
+  buffer = {};
+  screen = null;
+  controls = null;
+  stats = null;
+  filters = null;
+  caches = null;
+  math = new ThoriumMath();
+  entities = null;
+  console = null;
+  componentsList = {};
+
+  get app(){return this.conf.app}
+  get body(){return this.conf.parent}
+
+  constructor(){
+
+    console.log("%c ThoriumJS - Odyssee ", "border: 1px solid red;color: red;");
+    console.log("%c site : https://thoriumcdn.herokuapp.com/ ", "color: orange;");
+    console.log("%c git : https://github.com/MortallicaXxX/ThoriumJS ", "color: orange;");
+    // console.log("%cOdyssee", "border: 1px solid red;color: red;");
+
+    var self = this;
+    window.thorium = self;
+    window.addTemplate = function(name,template){
+      return self.addTemplate(name,template)
+    },
+    window.setUI = function(f){
+      return self.setUI(f)
+    },
+    window.onload = async function(){
+
+      function ready(){
+        self.conf = {
+          id : 'app-thorium',
+          app : null,
+          parent : document.body
+        }
+
+        self.gui = new GUI([{
+          type:"div",
+          prop:{
+            id:"app-thorium"
+          },
+          childrens:[
+            {
+              type:'div',
+              prop:{
+                id:'background-container'
+              },
+              childrens:[
+                {
+                  type:'div',
+                  prop:{id:'bckg1',text:th_caches.svg.th_bg1},
+                  proto : {
+                    updateBackgroundPosition : function(){
+                    }
+                  }
+                },
+                {
+                  type:'div',
+                  prop:{id:'bckg2',text:th_caches.svg.th_bg2},
+                  proto : {
+                    updateBackgroundPosition : function(){
+                      var centre = {
+                        x : thorium.screen.width/2,
+                        y : thorium.screen.height/2
+                      }
+
+                      let x = Math.abs(centre.x - thorium.controls.mouse.x);
+                      let y = Math.abs(centre.y - thorium.controls.mouse.y);
+
+                      if(thorium.controls.mouse.x <= centre.x)x = -x;
+                      if(thorium.controls.mouse.y <= centre.y)y = -y;
+
+                      let coef = {
+                        x : 50,
+                        y : 20
+                      }
+
+                      this.e.style.transform = "translate("+-((x/thorium.screen.width)*100)/coef.x+"%, "+-((y/thorium.screen.height)*100)/coef.y+"%)";
+                    }
+                  }
+                },
+                {
+                  type:'div',
+                  prop:{id:'bckg3',text:th_caches.svg.th_bg3},
+                  proto : {
+                    updateBackgroundPosition : function(){
+                      var centre = {
+                        x : thorium.screen.width/2,
+                        y : thorium.screen.height/2
+                      }
+
+                      let x = Math.abs(centre.x - thorium.controls.mouse.x);
+                      let y = Math.abs(centre.y - thorium.controls.mouse.y);
+
+                      if(thorium.controls.mouse.x <= centre.x)x = -x;
+                      if(thorium.controls.mouse.y <= centre.y)y = -y;
+
+                      let coef = {
+                        x : 10,
+                        y : 200
+                      }
+
+                      this.e.style.transform = "translate("+((x/thorium.screen.width)*100)/coef.x+"%, "+((y/thorium.screen.height)*100)/coef.y+"%)";
+                    }
+                  }
+                },
+                {
+                  type:'div',
+                  prop:{id:'bckg4',text:th_caches.svg.th_bg4},
+                  proto : {
+                    updateBackgroundPosition : function(){
+                      var centre = {
+                        x : thorium.screen.width/2,
+                        y : thorium.screen.height/2
+                      }
+
+                      let x = Math.abs(centre.x - thorium.controls.mouse.x);
+                      let y = Math.abs(centre.y - thorium.controls.mouse.y);
+
+                      if(thorium.controls.mouse.x <= centre.x)x = -x;
+                      if(thorium.controls.mouse.y <= centre.y)y = -y;
+
+                      let coef = {
+                        x : 50,
+                        y : 200
+                      }
+
+                      this.e.style.transform = "translate("+ ((((x/thorium.screen.width)*100)/coef.x)-25) +"%, "+ ((((y/thorium.screen.height)*100)/coef.y)-39) +"%)";
+                    }
+                  }
+                }
+              ],
+              proto : {
+                updateBackground : self.controls.addEventListener('mousemove',function(e){
+                  document.getElementById('background-container').updateMyBackground();
+                },this),
+                updateMyBackground : function(cursorInfo){
+                  for(var e of this.e.children){
+                    e.updateBackgroundPosition();
+                  }
+                }
+              }
+            },
+            {
+              type:'div',
+              prop:{
+                id:'app-container'
+              },
+              childrens:[
+                {
+                  type:"div",
+                  prop:{
+                    id:"thorium-title"
+                  },
+                  childrens:[
+                    {
+                      type:"p",
+                      prop:{
+                        text:"Thorium<span>JS</span>"
+                      }
+                    },
+                    {
+                      type:"div",
+                      prop:{
+                        id:"thorium-logo",
+                        text:th_caches.svg.thoriumColor
+                      }
+                    }
+                  ],
+                  proto : {
+                    onClick : function(){
+                      window.open("https://thoriumcdn.herokuapp.com/");
+                    }
+                  }
+                },
+                {
+                  type:"div",
+                  prop:{
+                    id:"thorium-description"
+                  },
+                  childrens:[
+                    {
+                      type:"div",
+                      prop:{
+                        class:"descirption"
+                      },
+                      childrens:[
+                        {
+                          type:'p',
+                          prop:{
+                            text:"ThoriumJS est un framework JS natif 'client side' qui ajoute à un projet HTML l'environnement 'thorium engine'."
+                          }
+                        },
+                        {
+                          type:'p',
+                          prop:{
+                            text:"L'engine permet d'utiliser directement des outils, fonctions et utilitaires. En savoir plus ? La documentation est sur le git."
+                          }
+                        },
+                        {
+                          type:'p',
+                          prop:{
+                            text:"Première utilisation de thorium ? N'ayez pas peur c'est simple et intuitif , ça va bien se passer. &#128540;"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      type:"div",
+                      prop:{
+                        id:"btn-github",
+                      },
+                      proto:{
+                        onclick:function(){
+                          window.open("https://github.com/MortallicaXxX/ThoriumJS");
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }],self);
+
+        addCss("style-app-thorium",[
+          "#app-thorium {",
+            "display: grid;",
+            "font-family: Inconsolata, Monaco, Consolas, 'Courier New', Courier;",
+            "min-height: var(--thorium-default-height);",
+            "min-width: var(--thorium-default-width);",
+            "position: absolute;",
+            "top: 0;",
+            "left: 0;",
+            "user-select: none;",
+            "--default-theme-color:lightseagreen;",
+            "font-size:1vw;",
+          "}",
+
+          "#background-container {",
+            "position: fixed;",
+            "height: 100%;",
+            "width: 100%;",
+            "top: 0;",
+            "left: 0;",
+            "z-index: 0;",
+            "display: grid;",
+          "}",
+
+          "#background-container div {",
+            "grid-column: 1;",
+            "grid-row: 1;",
+          "}",
+
+          "#bckg1 {",
+            "z-index: 1;",
+          "}",
+
+          "#bckg1 svg {",
+            // "height: var( --thorium-default-height);", // ce serra pour display portrait
+            "width: var(--thorium-default-width);",
+          "}",
+
+          "#bckg2 {",
+            "z-index: 2;",
+          "}",
+
+          "#bckg2 svg {",
+            // "height: var( --thorium-default-height);", // ce serra pour display portrait
+            "width: var(--thorium-default-width);",
+          "}",
+
+          "#bckg3 {",
+            "z-index: 3;",
+          "}",
+
+          "#bckg3 svg {",
+            // "height: var( --thorium-default-height);", // ce serra pour display portrait
+            "width: var(--thorium-default-width);",
+          "}",
+
+          "#bckg4 {",
+            "z-index: 4;",
+            "height: 200%;",
+            "width: 200%;",
+          "}",
+
+          "#bckg4 svg {",
+            "height: 100%;",
+            "width: 100%;",
+          "}",
+
+          "#app-container {",
+            "display: grid;",
+            "z-index:1;",
+            "grid-template-rows: min-content 1fr;",
+          "}",
+
+          "#thorium-title {",
+            "height: fit-content;",
+            "width: fit-content;",
+            "margin: auto;",
+            "font-size: 4vw;",
+            "font-weight: bold;",
+            "display: grid;",
+            "grid-template-columns: min-content max-content;",
+            "color:white;",
+            "border: 5px solid white;",
+            "margin-top: 1vw;",
+          "}",
+
+          "#thorium-title:hover {",
+            "background:white;",
+            "color:black;",
+            "border: 5px solid transparent;",
+          "}",
+
+          "#thorium-title:hover span{",
+            "color:white;",
+            "color:var(--default-theme-color);",
+          "}",
+
+          "#thorium-title p {",
+            "margin: 0 1vw;",
+            "grid-column: 2;",
+            "grid-row: 1;",
+          "}",
+
+          "#thorium-logo {",
+            "margin: auto;",
+            "display: grid;",
+            "grid-column: 1;",
+            "grid-row: 1;",
+            "height: 100%;",
+            "width: 4vw;",
+            "border-right: 5px solid white;",
+          "}",
+
+          "#thorium-title:hover #thorium-logo{",
+            "background:var(--default-theme-color);",
+          "}",
+
+          "#thorium-logo svg {",
+            "margin: auto;",
+            "width: 90%;",
+          "}",
+
+          "#thorium-description {",
+            "width: 80%;",
+            "min-height: 10vw;",
+            "margin: auto;",
+            "background-color: rgba(32,178,170,0.95);",
+            "margin-bottom:1vw;",
+            "display: grid;",
+            "grid-template-rows: 1fr 3vw;",
+            "text-align: center;",
+            "font-weight: bold;",
+            "color: darkslategray;",
+          "}",
+
+          "#thorium-description p{",
+            "padding-left:1vw;",
+            "padding-right:1vw;",
+          "}",
+
+          "#btn-github {",
+            "background-image:url(https://phoenixweb.com.au/wp-content/uploads/2016/11/GitHub-wide-logo-1024x219.png);",
+            "background-repeat: no-repeat;",
+            "background-position: center;",
+            "background-size: 80%;",
+            "height: 2vw;",
+            "width: 10vw;",
+            "border-radius: 0.5vw;",
+            "background-color: lightgray;",
+            "filter: drop-shadow(2px 2px 1px gray);",
+            "margin: auto;",
+          "}",
+
+          "#btn-github:hover {",
+            "background-color: ghostwhite;",
+            "filter: drop-shadow(2px 2px 1px gray);",
+          "}",
+        ])
+
+        self.gui.buildIn(document.body)
+        .then(function(){
+          self.initialise();
+        })
+      }
+
+      if(self.onReady){
+        delete thorium.caches.data;
+        return self.onReady(self);
+      }
+      else ready();
+
+    }
+    window.update = function( arg = null ){
+      return self.update(arg)
+    }
+    window.cssStyle = function(element = null , arg = null){
+      return self.cssStyle(element,arg);
+    }
+    window.cssToValue = function(cssValue = null){
+      return self.cssToValue(cssValue);
+    }
+    window.addCss = function(linkID = null , cssDef = null) {
+      return self.addCss(linkID,cssDef);
+    }
+    window.get = async function(url = null){
+      return self.get(url);
+    }
+    window.post = async function(url = null ,arg = null){
+      return self.post(url,arg);
+    }
+
+    self.caches = new ThoriumCaches(self);
+    window.th_caches = self.caches.data;
+    self.screen = new ScreenStat();
+    self.controls = new Controls(self);
+    self.stats = new STATS(self);
+    self.filters = new FILTRES(self);
+    self.entities = new ThoriumEntitites(self);
+    self.caches = new ThoriumCaches(self);
+    self.console = new ThoriumConsole();
+    self.platform = new PLATFORM(self);
+
+  }
+
+  get cachesData(){
+    try{
+      return this.caches.data;
+    }catch(err){
+      console.error(err);
+    }
+  }
+
+}
+
+THORIUM_ENGINE.prototype.initialise = async function (arg = null){
+  // if(this.thorus){
+  //   this.conf = {
+  //     id:'UItools',
+  //     parent:document.body,
+  //   }
+  //   thorium.onReady = this.thorus.initialise();
+  // }
+
+  // this.conf.sw = {
+  //   listeners : {
+  //     load : {
+  //       register : 'service-worker.js',
+  //       onSucces : function(r){
+  //         console.log();
+  //         console.log(`ServiceWorker registration successful with scope: ${r.scope}`);
+  //       },
+  //       onError : function(e){
+  //         console.log(`ServiceWorker registration failed: ${error}`);
+  //       }
+  //     }
+  //   }
+  // }
+
+  this.conf = (function(conf){
+    if(!conf.id){
+      console.error({msg:`Il semblerait que thorium.conf.id n'aie pas été déclarer. Id par défaut = 'app'`});
+      conf.id = 'app';
+    }
+    if(!conf.parent){
+      console.error({msg:`Il semblerait que thorium.conf.parent n'aie pas été déclarer. Parent par défaut = 'document.body'`});
+      conf.parent = document.body;
+    }
+    if(!conf.stats){
+      console.error({msg:`Il semblerait que thorium.conf.stats n'aie pas été déclarer. Défaut = 'true'`});
+      conf.stats = true;
+    }
+    if(!conf.filters){
+      console.error({msg:`Il semblerait que thorium.conf.filters n'aie pas été déclarer. Défaut = 'true'`});
+      conf.filters = true;
+    }
+    if(!conf.app)conf.app = document.getElementById(conf.id);
+
+    if(conf.sw){
+      if(typeof conf.sw != 'object' || Array.isArray(conf.sw))console.error();
+      else conf.sw = (function(sw){
+
+        function serviceWorker(sw){
+          Object.assign(this, sw);
+          this.worker = null;
+          this.__proto__.initialise = async function(self){
+
+            if ('serviceWorker' in navigator) {
+              if(!self.listeners.load) return console.error({msg:`serviceWorker.listeners.load ne semble pas déclarer`});
+              else {
+
+                navigator.serviceWorker.register(self.listeners.load.register)
+                .then(
+                  function(r,e){
+                    if(r){
+                      self.worker = r;
+                      self.listeners.load.onSucces(r);
+                    }
+                    if(e)self.listeners.load.onError(e);
+                  }
+                );
+
+              }
+            }
+          }
+          this.initialise(this);
+        }
+
+        return new serviceWorker(sw);
+
+      })(conf.sw);
+    }
+    return conf;
+  })(this.conf);
+
+  // if(this.conf.stats = true)self.stats = new STATS(this);
+  // if(this.conf.filters = true)self.filters = new FILTRES(this);
+
+  this.conf.app.initialise();
+  this.entities.initialise();
+}
+
+THORIUM_ENGINE.prototype.update = function (arg = null){
+  if(!this.conf.app)this.conf.app = document.getElementById(this.conf.id);
+  this.conf.app.update();
+}
+
+THORIUM_ENGINE.prototype.resize = function (arg = null){
+  if(!this.conf.app)this.conf.app = document.getElementById(this.conf.id);
+  this.conf.app.resize();
+}
+
+THORIUM_ENGINE.prototype.addTemplate = function (name,template) {
+  if(this.gui)return this.gui.addTemplate(name,template)
+};
+
+THORIUM_ENGINE.prototype.setUI = function (f) {
+  if(this.gui)return this.gui.setUI(f)
+};
+
+THORIUM_ENGINE.prototype.frameUpdate = function () {
+
+  try{
+    this.onFrameUpdate(this);
+  }catch(err){
+
+  }
+
+  this.entities.update();
+
+};
+
+THORIUM_ENGINE.prototype.vec2 = function(coord = null,y = null){
+  try{
+    return new this.math.vec2(coord,y);
+  }catch(err){
+
+  }
+}
+
+THORIUM_ENGINE.prototype.lerp = function(a = null,b = null,alpha = 0){
+  try{
+    return this.math.lerp(a,b,alpha);
+  }catch(err){
+    console.log(err);
+  }
+}
+
+THORIUM_ENGINE.prototype.cssStyle = function (element = null , propName = null) {
+  try{
+    if(!element)throw {err:1,msg:"element ne peut pas être null , pour changer une propriété css veuillez renseigné l'élément cible" , element:element}
+    if(!propName)throw {err:2,msg:"arg ne peut pas être null , veuillez indiquer une propriété css pour recevoir la valeur" , propName:propName}
+    const styles = window.getComputedStyle(element);
+    return styles[propName];
+  }
+  catch(err){
+    console.error(err);
+  }
+}
+
+THORIUM_ENGINE.prototype.cssToValue = function (cssValue = null) {
+  try{
+    if(!cssValue)throw {err:1,msg:"cssValue ne peut être null",cssValue:cssValue};
+    // console.log(cssValue);
+    cssValue = cssValue.split('p'); // "px"
+    if(cssValue.length == 1)cssValue = cssValue.split('v'); // "vw"
+    if(cssValue.length == 1)cssValue = cssValue.split('c'); // "ch"
+    if(cssValue.length == 1)cssValue = cssValue.split('%'); // "%"
+    if(cssValue.length == 1)throw {err:2,msg:"cssValue ne correspond à aucun format connus",cssValue:cssValue};
+    return Number(cssValue[0]);
+  }
+  catch(err){
+    // console.error(err);
+    return false;
+  }
+}
+
+THORIUM_ENGINE.prototype.addCss = function (linkID = null , cssDef = null) {
+  try{
+    if(!linkID){console.error({warningMessage:"Attention aucun id n'est scpécifier pour cette feuille de css"});}
+    if(!cssDef)throw {err:1,msg:"cssDef est null , aucune feuille de style ne peut être ajouter.",cssDef:cssDef};
+    if(!Array.isArray(cssDef))throw {err:2,msg:"cssDef doit être un array.",cssDef:cssDef};
+    var styleSheet = document.createElement("style")
+    if(linkID)styleSheet.setAttribute('id',linkID);
+    styleSheet.type = "text/css";
+    styleSheet.innerText = cssDef.join(" ");
+    document.head.appendChild(styleSheet);
+  }
+  catch(err){
+    console.error(err);
+  }
+}
+
+THORIUM_ENGINE.prototype.get = async function(url = null){
+  return new Promise(async function(res){
+    try{
+      if(!url)throw {err:1,msg:"url ne peut pas être égal à null",url:url}
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.withCredentials = false;
+      xhr.setRequestHeader("Content-type", "text/javascript");
+      xhr.send();
+      xhr.onload = function(e){res(e.target)}
+    }catch(err){
+      console.error(err);
+      res(false);
+    }
+  })
+}
+
+THORIUM_ENGINE.prototype.post = async function (url = null,arg = null){
+  return new Promise(async function(req){
+    try{
+      if(!url)throw {err:1,msg:"url ne peut pas être égal à null",url:url}
+      if(!arg)throw {err:2,msg:"arg ne peut pas être égal à null",arg:arg}
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.withCredentials = false;
+      xhr.setRequestHeader("Content-type", "application/json");
+      xhr.send(JSON.stringify(arg));
+      xhr.onload = function(e){req(e.target)}
+    }catch(err){
+      console.error(err);
+      req(false);
+    }
+  })
+}
+
+THORIUM_ENGINE.prototype.components = function(e,root,parent){
+  // var self = thorium;
+  // var componentClassName = new.target.name;
+  // // console.log(thorium.componentsList[componentClassName]);
+  // try{
+  //   if(self.componentsList[componentClassName])throw {err:1,msg:"Vous esseillez d'ajouter un component déjà existant."}
+  //   self.componentsList[componentClassName] = function(e,root,parent){return new UIelement(e,root,parent)};
+  //   return self.componentsList[componentClassName](e,root,parent);
+  // }catch(err){
+  //   return self.componentsList[componentClassName](e,root,parent);
+  // }
+
+  return new UIelement(e,root,parent)
+
+}
+
+THORIUM_ENGINE.prototype.entity = function(name){
+  return thorium.entities.entity(name);
+  // return new Entity(name);
+}
+
+THORIUM_ENGINE.prototype.addEntity = function(entity){
+  this.entities.addEntity(entity)
+}
+
+THORIUM_ENGINE.prototype.animation = function(entity,time,arg,option){
+
+  return entity.addAnimation(time,arg,option);
+  // return
+  // this.entities.addEntity(entity)
+}
+
+THORIUM_ENGINE.prototype.GUI = function(template){
+  this.gui = new GUI(template,this);
+  return this.gui;
+}
+
+THORIUM_ENGINE.prototype.log = function(message=null,style=null){
+  return this.console.log(message,style);
+}
+
+new THORIUM_ENGINE();
+
+class ThoriumDialog {
+
+  constructor(){
+    if(thorium){
+      thorium.dialog = this;
+      this.root = thorium;
+      this.initialise();
+    }
+  }
+
+}
+
+ThoriumDialog.prototype.new = function (title,arg) {
+  return new WinBox(title,arg);
+};
+
+ThoriumDialog.prototype.initialise = function () {
+  /**
+   * WinBox.js v0.1.81 (Bundle)
+   * Copyright 2021 Nextapps GmbH
+   * Author: Thomas Wilkerling
+   * Licence: Apache-2.0
+   * https://github.com/nextapps-de/winbox
+   */
+   (function() {
+     'use strict';
+     var e, h = document.createElement("style");
+     h.innerHTML = "@keyframes fade-in{0%{opacity:0}to{opacity:.85}}.winbox.modal:after,.winbox.modal:before{content:''}.winbox{position:fixed;left:0;top:0;background:#0050ff;box-shadow:0 14px 28px rgba(0,0,0,.25),0 10px 10px rgba(0,0,0,.22);transition:width .3s,height .3s,transform .3s;transition-timing-function:cubic-bezier(.3,1,.3,1);will-change:transform,width,height;contain:layout size;text-align:left;touch-action:none}.max,.no-shadow{box-shadow:none}.wb-header,.winbox iframe{position:absolute;width:100%}.wb-header{left:0;top:0;height:35px;color:#fff;overflow:hidden}.wb-body,.wb-n,.wb-s{position:absolute;left:0}.wb-n,.wb-s{height:10px}.wb-body{right:0;top:35px;bottom:0;overflow:auto;-webkit-overflow-scrolling:touch;overflow-scrolling:touch;will-change:contents;background:#fff;margin-top:0!important;contain:strict}.wb-title{font-family:Arial,sans-serif;font-size:14px;padding-left:10px;cursor:move;line-height:35px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wb-n{top:-5px;right:0;cursor:n-resize}.wb-e{position:absolute;top:0;right:-5px;bottom:0;width:10px;cursor:w-resize}.wb-s,.wb-se,.wb-sw{bottom:-5px}.wb-s{right:0;cursor:n-resize}.wb-w,.winbox.modal:before{position:absolute;top:0;bottom:0}.wb-w{left:-5px;width:10px;cursor:w-resize}.wb-ne,.wb-nw,.wb-sw{width:15px;height:15px;position:absolute}.wb-nw{top:-5px;left:-5px;cursor:nw-resize}.wb-ne,.wb-sw{cursor:ne-resize}.wb-ne{top:-5px;right:-5px}.wb-sw{left:-5px}.wb-se{position:absolute;right:-5px;width:15px;height:15px;cursor:nw-resize}.wb-icon{float:right;height:35px;max-width:100%;text-align:center}.wb-icon *{display:inline-block;width:30px;height:100%;background-position:center;background-repeat:no-repeat;cursor:pointer;max-width:100%}.no-close .wb-close,.no-full .wb-full,.no-header .wb-header,.no-max .wb-max,.no-min .wb-min,.no-resize .wb-body~div,.winbox.min .wb-body>*,.winbox.min .wb-full,.winbox.min .wb-min,.winbox.modal .wb-full,.winbox.modal .wb-max,.winbox.modal .wb-min{display:none}.wb-min{background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNOCAwaDdhMSAxIDAgMCAxIDAgMkgxYTEgMSAwIDAgMSAwLTJoN3oiLz48L3N2Zz4=);background-size:14px auto;background-position:center bottom 11px}.wb-max{background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9IiNmZmYiIHZpZXdCb3g9IjAgMCA5NiA5NiI+PHBhdGggZD0iTTIwIDcxLjMxMUMxNS4zNCA2OS42NyAxMiA2NS4yMyAxMiA2MFYyMGMwLTYuNjMgNS4zNy0xMiAxMi0xMmg0MGM1LjIzIDAgOS42NyAzLjM0IDExLjMxMSA4SDI0Yy0yLjIxIDAtNCAxLjc5LTQgNHY1MS4zMTF6Ii8+PHBhdGggZD0iTTkyIDc2VjM2YzAtNi42My01LjM3LTEyLTEyLTEySDQwYy02LjYzIDAtMTIgNS4zNy0xMiAxMnY0MGMwIDYuNjMgNS4zNyAxMiAxMiAxMmg0MGM2LjYzIDAgMTItNS4zNyAxMi0xMnptLTUyIDRjLTIuMjEgMC00LTEuNzktNC00VjM2YzAtMi4yMSAxLjc5LTQgNC00aDQwYzIuMjEgMCA0IDEuNzkgNCA0djQwYzAgMi4yMS0xLjc5IDQtNCA0SDQweiIvPjwvc3ZnPg==);background-size:17px auto}.wb-close{background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xIC0xIDE4IDE4Ij48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMS42MTMuMjEuMDk0LjA4M0w4IDYuNTg1IDE0LjI5My4yOTNsLjA5NC0uMDgzYTEgMSAwIDAgMSAxLjQwMyAxLjQwM2wtLjA4My4wOTRMOS40MTUgOGw2LjI5MiA2LjI5M2ExIDEgMCAwIDEtMS4zMiAxLjQ5N2wtLjA5NC0uMDgzTDggOS40MTVsLTYuMjkzIDYuMjkyLS4wOTQuMDgzQTEgMSAwIDAgMSAuMjEgMTQuMzg3bC4wODMtLjA5NEw2LjU4NSA4IC4yOTMgMS43MDdBMSAxIDAgMCAxIDEuNjEzLjIxeiIvPjwvc3ZnPg==);background-size:15px auto}.wb-full{background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2Utd2lkdGg9IjIuNSIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNOCAzSDVhMiAyIDAgMCAwLTIgMnYzbTE4IDBWNWEyIDIgMCAwIDAtMi0yaC0zbTAgMThoM2EyIDIgMCAwIDAgMi0ydi0zTTMgMTZ2M2EyIDIgMCAwIDAgMiAyaDMiLz48L3N2Zz4=);background-size:16px auto}.winbox.max .wb-body~div,.winbox.max .wb-title,.winbox.min .wb-body~div,.winbox.modal .wb-body~div,.winbox.modal .wb-title{pointer-events:none}.winbox.min .wb-title{cursor:default}.max .wb-body{margin:0!important}.winbox iframe{height:100%;border:0}.winbox.modal:before{left:0;right:0;background:inherit;border-radius:inherit}.winbox.modal:after{position:absolute;top:-100vh;left:-100vw;right:-100vw;bottom:-100vh;background:#0d1117;animation:fade-in .2s ease-out forwards;z-index:-1}.no-animation{transition:none}.no-header .wb-body{top:0}.no-move:not(.min) .wb-title{pointer-events:none}";
+     var k = document.getElementsByTagName("head")[0];
+     k.firstChild ? k.insertBefore(h, k.firstChild) : k.appendChild(h);
+     var q = document.createElement("div");
+     q.innerHTML = "<div class=wb-header><div class=wb-icon><span class=wb-min></span><span class=wb-max></span><span class=wb-full></span><span class=wb-close></span></div><div class=wb-title> </div></div><div class=wb-body></div><div class=wb-n></div><div class=wb-s></div><div class=wb-w></div><div class=wb-e></div><div class=wb-nw></div><div class=wb-ne></div><div class=wb-se></div><div class=wb-sw></div>";
+
+     function r(a, b, c, g) {
+         a.addEventListener(b, c, g || !1 === g ? g : !0)
+     }
+
+     function t(a) {
+         a.stopPropagation();
+         a.cancelable && a.preventDefault()
+     }
+
+     function w(a, b, c) {
+         c = "" + c;
+         a["_s_" + b] !== c && (a.style.setProperty(b, c), a["_s_" + b] = c)
+     };
+     var x = document.documentElement,
+         y = [],
+         A = 0,
+         B, C, F, G, exitFullscreen, L, M;
+
+     function O(a, b) {
+         if (!(this instanceof O)) return new O(a);
+         B || Q();
+         this.g = q.cloneNode(!0);
+         this.body = this.g.getElementsByClassName("wb-body")[0];
+         var c, g;
+         if (a) {
+             if (b) {
+                 var f = a;
+                 a = b
+             }
+             if ("string" === typeof a) f = a;
+             else {
+                 if (g = a.modal) var u = c = "center";
+                 var z = a.id;
+                 var H = a.root;
+                 f = f || a.title;
+                 var D = a.mount;
+                 var d = a.html;
+                 var I = a.url;
+                 var l = a.width;
+                 var m = a.height;
+                 u = a.x || u;
+                 c = a.y || c;
+                 var E = a.max;
+                 var n = a.top;
+                 var p = a.left;
+                 var v = a.bottom;
+                 var J = a.right;
+                 B = a.index || B;
+                 var W = a.onclose;
+                 var X = a.onfocus;
+                 var Y = a.onblur;
+                 var Z = a.onmove;
+                 var aa =
+                     a.onresize;
+                 b = a.background;
+                 var P = a.border;
+                 var N = a["class"];
+                 b && this.setBackground(b);
+                 P && w(this.body, "margin", P + (isNaN(P) ? "" : "px"))
+             }
+         }
+         this.setTitle(f || "");
+         a = L;
+         f = M;
+         n = n ? R(n, f) : 0;
+         v = v ? R(v, f) : 0;
+         p = p ? R(p, a) : 0;
+         J = J ? R(J, a) : 0;
+         a -= p + J;
+         f -= n + v;
+         l = l ? R(l, a) : a / 2 | 0;
+         m = m ? R(m, f) : f / 2 | 0;
+         u = u ? R(u, a, l) : p;
+         c = c ? R(c, f, m) : n;
+         B = B || 10;
+         this.g.id = this.id = z || "winbox-" + ++A;
+         this.g.className = "winbox" + (N ? " " + ("string" === typeof N ? N : N.join(" ")) : "") + (g ? " modal" : "");
+         this.x = u;
+         this.y = c;
+         this.width = l;
+         this.height = m;
+         this.top = n;
+         this.right = J;
+         this.bottom =
+             v;
+         this.left = p;
+         this.max = this.min = !1;
+         this.j = W;
+         this.l = X;
+         this.i = Y;
+         this.o = Z;
+         this.m = aa;
+         E ? this.maximize() : this.move().resize();
+         this.focus();
+         D ? this.mount(D) : d ? this.body.innerHTML = d : I && this.setUrl(I);
+         ba(this);
+         (H || document.body).appendChild(this.g)
+     }
+     O["new"] = function(a) {
+         return new O(a)
+     };
+
+     function R(a, b, c) {
+         "string" === typeof a && ("center" === a ? a = (b - c) / 2 | 0 : "right" === a || "bottom" === a ? a = b - c : (c = parseFloat(a), a = "%" === ("" + c !== a && a.substring(("" + c).length)) ? b / 100 * c | 0 : c));
+         return a
+     }
+
+     function Q() {
+         var a = document.body;
+         a[G = "requestFullscreen"] || a[G = "msRequestFullscreen"] || a[G = "webkitRequestFullscreen"] || a[G = "mozRequestFullscreen"] || (G = "");
+         exitFullscreen = G && G.replace("request", "exit").replace("mozRequest", "mozCancel").replace("Request", "Exit");
+         r(window, "resize", function() {
+             L = x.clientWidth;
+             M = x.clientHeight;
+             S()
+         });
+         L = x.clientWidth;
+         M = x.clientHeight
+     }
+
+     function ba(a) {
+         T(a, "title");
+         T(a, "n");
+         T(a, "s");
+         T(a, "w");
+         T(a, "e");
+         T(a, "nw");
+         T(a, "ne");
+         T(a, "se");
+         T(a, "sw");
+         r(a.g.getElementsByClassName("wb-min")[0], "click", function(b) {
+             t(b);
+             a.minimize()
+         });
+         r(a.g.getElementsByClassName("wb-max")[0], "click", function(b) {
+             t(b);
+             a.focus().maximize()
+         });
+         G ? r(a.g.getElementsByClassName("wb-full")[0], "click", function(b) {
+             t(b);
+             a.focus().fullscreen()
+         }) : a.addClass("no-full");
+         r(a.g.getElementsByClassName("wb-close")[0], "click", function(b) {
+             t(b);
+             a.close() || (a = null)
+         });
+         r(a.g, "click", function() {
+                 a.focus()
+             },
+             !1)
+     }
+
+     /*
+     * ? se lance entre deux états ?
+     */
+     function U(a) {
+       console.log(a,y);
+         y.splice(y.indexOf(a), 1);
+         S();
+         a.removeClass("min");
+         a.min = !1;
+         a.g.title = ""
+     }
+
+     function S() {
+         for (var a = y.length, b = 0, c, g; b < a; b++) c = y[b], g = Math.min((L - 2 * c.left) / a, 250), c.resize(g + 1 | 0, 35, !0).move(c.left + b * g | 0, M - c.bottom - 35, !0)
+     }
+
+     function T(a, b) {
+         function c(d) {
+             t(d);
+             a.min ? (U(a), a.resize().move().focus()) : (w(a.g, "transition", "none"), (z = d.touches) && (z = z[0]) ? (d = z, r(window, "touchmove", g), r(window, "touchend", f)) : (r(window, "mousemove", g), r(window, "mouseup", f)), H = d.pageX, D = d.pageY, a.focus())
+         }
+
+         function g(d) {
+             t(d);
+             z && (d = d.touches[0]);
+             var I = d.pageX;
+             d = d.pageY;
+             var l = I - H,
+                 m = d - D,
+                 E;
+             if ("title" === b) {
+                 a.x += l;
+                 a.y += m;
+                 var n = E = 1
+             } else {
+                 if ("e" === b || "se" === b || "ne" === b) {
+                     a.width += l;
+                     var p = 1
+                 } else if ("w" === b || "sw" === b || "nw" === b) a.x += l, a.width -= l, n = p = 1;
+                 if ("s" ===
+                     b || "se" === b || "sw" === b) {
+                     a.height += m;
+                     var v = 1
+                 } else if ("n" === b || "ne" === b || "nw" === b) a.y += m, a.height -= m, E = v = 1
+             }
+             if (p || v) p && (a.width = Math.max(Math.min(a.width, L - a.x - a.right), 150)), v && (a.height = Math.max(Math.min(a.height, M - a.y - a.bottom), 35)), a.resize();
+             if (n || E) n && (a.x = Math.max(Math.min(a.x, L - a.width - a.right), a.left)), E && (a.y = Math.max(Math.min(a.y, M - a.height - a.bottom), a.top)), a.move();
+             H = I;
+             D = d
+         }
+
+         function f(d) {
+             t(d);
+             w(a.g, "transition", "");
+             z ? (window.removeEventListener("touchmove", g, !0), window.removeEventListener("touchend",
+                 f, !0)) : (window.removeEventListener("mousemove", g, !0), window.removeEventListener("mouseup", f, !0))
+         }
+         var u = a.g.getElementsByClassName("wb-" + b)[0],
+             z, H, D;
+         r(u, "mousedown", c);
+         r(u, "touchstart", c, {
+             passive: !1
+         })
+     }
+     e = O.prototype;
+     e.mount = function(a) {
+         this.unmount();
+         a.h || (a.h = a.parentNode);
+         this.body.textContent = "";
+         this.body.appendChild(a);
+         return this
+     };
+     e.unmount = function(a) {
+         var b = this.body.firstChild;
+         if (b) {
+             var c = a || b.h;
+             c && c.appendChild(b);
+             b.h = a
+         }
+         return this
+     };
+     e.setTitle = function(a) {
+         a = this.title = a;
+         this.g.getElementsByClassName("wb-title")[0].firstChild.nodeValue = a;
+         return this
+     };
+     e.setBackground = function(a) {
+         w(this.g, "background", a);
+         return this
+     };
+     e.setUrl = function(a) {
+         this.body.innerHTML = '<iframe src="' + a + '"></iframe>';
+         return this
+     };
+     e.focus = function() {
+         F !== this && (w(this.g, "z-index", B++), this.addClass("focus"), F && (F.removeClass("focus"), F.i && F.i()), F = this, this.l && this.l());
+         return this
+     };
+     e.hide = function() {
+       console.log("hide");
+         return this.addClass("hide")
+     };
+     e.show = function() {
+       console.log("show");
+         return this.removeClass("hide")
+     };
+     e.minimize = function(a) {
+         C && V();
+         !a && this.min ? (U(this), this.resize().move()) : !1 === a || this.min || (y.push(this), S(), this.g.title = this.title, this.addClass("min"), this.min = !0);
+         this.max && (this.removeClass("max"), this.max = !1);
+         return this
+     };
+     e.maximize = function(a) {
+         if ("undefined" === typeof a || a !== this.max) this.min && U(this), (this.max = !this.max) ? this.addClass("max").resize(L - this.left - this.right, M - this.top - this.bottom, !0).move(this.left, this.top, !0) : this.resize().move().removeClass("max");
+         return this
+     };
+     e.fullscreen = function(a) {
+         if ("undefined" === typeof a || a !== C) this.min && (this.resize().move(), U(this)), C && V() || (this.body[G](), C = !0);
+         return this
+     };
+
+     function V() {
+       /* C => est il en mode full screen ? */
+         C = !1;
+         if (document.fullscreen || document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement) return document[exitFullscreen](), !0
+     }
+     e.close = function(a) {
+         if (this.j && this.j(a)) return !0;
+         this.min && U(this);
+         this.unmount();
+         this.g.parentNode.removeChild(this.g);
+         F === this && (F = null)
+     };
+     e.move = function(a, b, c) {
+         a || 0 === a ? c || (this.x = a ? a = R(a, L - this.left - this.right, this.width) : 0, this.y = b ? b = R(b, M - this.top - this.bottom, this.height) : 0) : (a = this.x, b = this.y);
+         w(this.g, "transform", "translate(" + a + "px," + b + "px)");
+         this.o && this.o(a, b);
+         return this
+     };
+     e.resize = function(a, b, c) {
+         a || 0 === a ? c || (this.width = a ? a = R(a, L - this.left - this.right) : 0, this.height = b ? b = R(b, M - this.top - this.bottom) : 0) : (a = this.width, b = this.height);
+         w(this.g, "width", a + "px");
+         w(this.g, "height", b + "px");
+         this.m && this.m(a, b);
+         return this
+     };
+     e.addClass = function(a) {
+         this.g.classList.add(a);
+         return this
+     };
+     e.removeClass = function(a) {
+         this.g.classList.remove(a);
+         return this
+     };
+     window.WinBox = O;
+ }).call(this);
+  // console.log(winbox());
+  // return winbox;
+  // return 'tets';
+};
+
+new ThoriumDialog();
+
+class Text extends thorium.components{
+  constructor(text,position = "left"){
+    if(position == 'left')position = 'margin:0 auto auto auto;';
+    if(position == 'center')position = 'margin:auto;';
+    if(position == 'right')position = 'margin:auto auto auto 0;';
+    super({
+      type:'p',
+      prop : {
+        text : text,
+        style:position
+      }
+    })
+  }
+}
+
+class Container extends thorium.components{
+  constructor(arg){
+
+    var c = {
+      type:"div"
+    };
+
+    if(arg.prop)c.prop = arg.prop;
+    if(arg.childrens)c.childrens = arg.childrens;
+    if(arg.proto)c.proto = arg.proto;
+
+    super(c);
+  }
+}
+
+class Ccontainer extends thorium.components{
+  constructor(arg){
+
+    var c = {};
+
+    if(arg.type)c.type = arg.type;
+    else c.type = "div";
+    if(arg.prop)c.prop = arg.prop;
+    if(arg.childrens)c.childrens = arg.childrens;
+    if(arg.proto)c.proto = arg.proto;
+
+    super(c);
+
+  }
+}
+
+class Form extends thorium.components{
+  constructor(arg){
+
+    var x = {
+      type:"form",
+      childrens : [
+        new SVGBtn('Valider','center',{
+          onMouseDown : function(e){
+
+          }
+        });
+      ]
+    }
+
+    if(arg.prop)x.prop = arg.prop;
+    if(arg.childrens)x.childrens = arg.childrens;
+    if(arg.proto)x.proto = arg.proto;
+
+    super(x);
+  }
+}
+
+class SVGBtn extends thorium.components{
+  constructor(svg,position,proto = null){
+    super({
+      type:'btn',
+      prop : {
+        style : 'display : grid;'
+      },
+      childrens : [
+        new Text(svg,position)
+      ],
+      proto : proto
+    })
+  }
 }
