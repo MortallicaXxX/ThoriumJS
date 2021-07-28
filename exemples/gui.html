@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <script src="../build/thorium_v2.0.1.js" type="text/javascript"></script>
+  </head>
+  <body>
+    <script type="text/javascript">
+
+      thorium.conf = {
+        id : 'app',
+        parent : document.body
+      }
+
+      thorium.onReady = function(self){
+
+        // new UI([
+        //   {
+        //     type:'div',
+        //     prop : {id : "app"},
+        //     childrens : [
+        //       {
+        //         type:'p',
+        //         prop : {
+        //           text : "test"
+        //         },
+        //         proto : {
+        //           keyPress : null,
+        //           onInitialise : function(){
+        //             console.log('initialisation');
+        //             this.keyPress.set(thorium.controls.addEventListener("mousemove",function(e){
+        //               console.log(e);
+        //             }))
+        //           },
+        //           onMouseOver : function(){
+        //             console.log('ici');
+        //           }
+        //         }
+        //       }
+        //     ]
+        //   }
+        // ])
+        // .buildIn(document.body)
+        // .then(function(e){
+        //   self.initialise();
+        // })
+
+
+        new GUI([
+          new Ccontainer({
+            type : 'app',
+            prop : {id : 'app'},
+            childrens : [
+              new Container({
+                childrens : [
+                  new Text("C'est un test de GUI.",'center'),
+                ],
+                proto : {
+                  onInitialise : function(){
+                    console.log(this);
+                  }
+                }
+              })
+            ]
+          })
+        ])
+        .buildIn(document.body)
+        .then(function(){
+          self.initialise();
+        })
+
+      }
+
+      thorium.addCss('app-Style',[`
+        container {
+          display : grid;
+        }
+      `])
+
+    </script>
+  </body>
+</html>

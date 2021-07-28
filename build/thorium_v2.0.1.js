@@ -3249,7 +3249,6 @@ THORIUM_ENGINE.prototype.initialise = async function (arg = null){
 
   // if(this.conf.stats = true)self.stats = new STATS(this);
   // if(this.conf.filters = true)self.filters = new FILTRES(this);
-
   this.conf.app.initialise();
   this.entities.initialise();
 }
@@ -3786,11 +3785,26 @@ class Text extends thorium.components{
   }
 }
 
-class Container extends thorium.components{
+class Div extends thorium.components{
   constructor(arg){
 
     var c = {
       type:"div"
+    };
+
+    if(arg.prop)c.prop = arg.prop;
+    if(arg.childrens)c.childrens = arg.childrens;
+    if(arg.proto)c.proto = arg.proto;
+
+    super(c);
+  }
+}
+
+class Container extends thorium.components{
+  constructor(arg){
+
+    var c = {
+      type:"container"
     };
 
     if(arg.prop)c.prop = arg.prop;
@@ -3852,4 +3866,311 @@ class SVGBtn extends thorium.components{
       proto : proto
     })
   }
+}
+
+// MobileApp //
+
+class MobileApp{
+  constructor(arg = null){
+    if(typeof arg != "object" && Array.isArray(arg) == false)throw {msg:"arg doit être un object",r:arg};
+
+    /*
+    * class widgets de MobileApp
+    */
+    function widgets(arg){
+
+      this.left =  false;
+      this.top =  false;
+      this.right =  false;
+
+      this.add = function(widget = null){
+        if(!widget) console.error({msg:"widget ne peut être null"});
+        if(this[widget.position])this[widget.position][widget.name] = widget;
+        else console.error({msg:`widget.position semble faire appel à un widget déclarer à false`});
+        return Object.keys(this[widget.position]).length;
+      };
+      this.remove = function(widget = null){
+        if(!widget) console.error({msg:"widget ne peut être null"});
+        if(this[widget.position])delete this[widget.position][widget.name];
+        else console.error({msg:`widget.position semble faire appel à un widget déclarer à false`});
+      };
+
+      try{
+        if(!arg.widgets) throw {msg:`widgets n'est pas présent dans arg`,arg:arg};
+        if(arg.widgets.left || arg.widgets.left == true)this.left = (arg.widgets.left == true ? {} : (function(self){
+          self.left = {};
+          for(var w of arg.widgets.left){
+            new w(self);
+          }
+          return self.left;
+        })(this) );
+        if(arg.widgets.top || arg.widgets.top == true)this.top = (arg.widgets.left == true ? {} : (function(self){
+          self.top = {};
+          for(var w of arg.widgets.left){
+            new w(self);
+          }
+          return self.top;
+        })(this) );
+        if(arg.widgets.right || arg.widgets.right == true)this.right = (arg.widgets.left == true ? {} : (function(self){
+          self.right = {};
+          for(var w of arg.widgets.left){
+            new w(self);
+          }
+          return self.right;
+        })(this) );
+      }catch(err){
+        console.error(err);
+      }
+
+    }
+
+    function mobileHeader(arg){
+
+    }
+
+    function mobileBody(arg){
+      return [new arg.body()];
+    }
+
+    function mobileMenu(arg){
+      if(arg.menu)return new arg.menu();
+    }
+
+    this.header = new mobileHeader(arg);
+    this.widgets = new widgets(arg);
+    this.body = new mobileBody(arg);
+    this.menu = new mobileMenu(arg);
+
+    /*
+    * Construction du GUI de l'app modile sur base des parametres
+    */
+    this.gui = (function(self){
+
+      var x = {
+        left : [],
+        top : [],
+        right : []
+      }
+
+      for(var key of Object.keys(x)){
+        if(typeof self.widgets[key] == "object")x[key] = Array.from({length : Object.keys(self.widgets[key]).length} , (x,i) => self.widgets[key][Object.keys(self.widgets[key])[i]].template[0] );
+      }
+
+      console.log(self.menu);
+      var x = [{
+        type:"app",
+        prop : {
+          id : "app"
+        },
+        childrens:[
+          {
+            type:'appContainer',
+            childrens:[
+              {
+                type:'leftWidget',
+                prop:{
+                  class:'widgetContainer'
+                },
+                childrens:x.left
+              },
+              {
+                type:'topWidget',
+                prop:{
+                  class:'widgetContainer'
+                },
+                childrens:x.top
+              },
+              {
+                type:'rightWidget',
+                prop:{
+                  class:'widgetContainer'
+                },
+                childrens:x.right
+              },
+              {
+                type:'main',
+                childrens : self.body,
+                proto : {
+                  onMouseOver : function(e){
+                    // console.log(thorium.controls);
+                  }
+                }
+              }
+            ]
+          },
+          self.menu.ui
+        ]
+      }];
+
+      return new UI(x);
+    })(this)
+
+    // if(arg) for(var key of Object.keys(arg)){
+    //   if(!this[key])console.error({msg:`key : ${key} ne fais pas partie des mots clefs attendus`,expected:`[ ${Object.keys(this).join(" , ")} ]`});
+    //   else this[key] = arg[key];
+    // };
+
+  }
+}
+
+MobileApp.prototype.buildIn = function (target) {
+  return this.gui.buildIn(target);
+};
+
+// Widget //
+
+class Widget{
+  constructor(template,position,ref){
+    this.template = template;
+    this.position = position;
+    this.root = ref;
+    this.name = this.__proto__.constructor.name;
+    this.id = this.root.add(this);
+    this.template[0].prop.id = `tWidget-${this.id}`;
+  }
+}
+
+class leftWidget extends Widget{
+  constructor(template,ref){
+    super([
+      {
+        type:'widget',
+        prop : {
+          id : 'lWidget-1'
+        },
+        childrens:[
+          {
+            type:'container',
+            childrens:[
+              template
+            ]
+          }
+        ]
+      }
+    ],"left",ref);
+  }
+}
+
+class topWidget extends Widget{
+  constructor(template,ref){
+    super([
+      {
+        type:'widget',
+        prop : {
+          id : 'tWidget-1'
+        },
+        childrens:[
+          {
+            type:'container',
+            childrens:[
+              template
+            ]
+          }
+        ]
+      }
+    ],"top",ref);
+  }
+}
+
+class rightWidget extends Widget{
+  constructor(template,ref){
+    super([
+      {
+        type:'widget',
+        prop : {
+          id : 'rWidget-1'
+        },
+        childrens:[
+          {
+            type:'container',
+            childrens:[
+              template
+            ]
+          }
+        ]
+      }
+    ],"right",ref);
+  }
+}
+
+// MobileMenu //
+
+class MobileMenu{
+
+  constructor(arg){
+
+    var x = {
+      buttons : [],
+    }
+
+    try{
+      x.buttons = (!arg.buttons || !Array.isArray(arg.buttons) ? [] : (function(buttonList){
+        const x = [];
+        for(const i of Array.from({length : buttonList.length} , (x,i) => i)){
+          x.push((new (buttonList[i])()).ui);
+        }
+        return x;
+      })(arg.buttons))
+    }catch(err){
+
+    }
+    console.log(x.buttons);
+    this.ui = (new UI([{
+      type:'mobileMenu',
+      childrens : [{
+        type:'container',
+        childrens : x.buttons
+      }],
+      proto : {
+        onResize : function(){
+          console.log(this);
+        }
+      }
+    }])).ui;
+
+  }
+
+  icon = function(arg){
+    function SVGicon(arg){
+      this.ui = (new UI([{
+        type:'icon',
+        prop : {
+          class : 'mobileMenu-icon',
+          text : arg.svg,
+        },
+        proto : (function(arg){
+
+          const proto = {
+            onClick : function(e){
+              var self = this;
+              self.turnActive();
+              setTimeout(function(){
+                self.turnActive();
+              },400)
+            }
+          }
+
+          if(arg.proto) for(const key of Object.keys(arg.proto)){
+            if(!proto[key])proto[key] = arg.proto[key];
+            else console.error({msg:`Il semblerait que ${key} existe déjà en tant que valeur/fonction prototype`});
+          }
+
+          return proto;
+        })(arg)
+      }])).ui
+    }
+    if(arg.svg)return new SVGicon(arg);
+    if(arg.img)return new IMGicon(arg);
+  }
+
+}
+
+// MobileHeader //
+
+class MobileHeader{
+
+}
+
+class monHeader extends MobileHeader{
+
 }

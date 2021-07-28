@@ -13,9 +13,10 @@ class ThoriumBuilder{
     .then(function(){
       self.getParameters().then(function(parameters){
         self.buildType = parameters[0];
-        if(parameters[0] == 'snap')self.builder();
-        else if(parameters[0] == 'minor')self.builder();
-        else if(parameters[0] == 'major')self.builder();
+        if(self.buildType == 'snap')self.builder();
+        else if(self.buildType == 'minor')self.builder();
+        else if(self.buildType == 'major')self.builder();
+        else if(self.buildType == 'caches')self.compilateur();
         else console.error(`Vous ne spécifier pas le type d'update 'snap' 'minor' 'major'`);
       })
     })
@@ -112,7 +113,7 @@ ThoriumBuilder.prototype.isBuildFolderExist = function () {
 };
 
 /*
-* builder version major
+* builder
 */
 ThoriumBuilder.prototype.builder = function () {
   const buildType = this.buildType;
@@ -128,46 +129,97 @@ ThoriumBuilder.prototype.builder = function () {
   if(buildType == 'minor')this.package.version = `${major}.${minor + 1}.0`;
   if(buildType == 'major')this.package.version = `${major + 1}.0.0`;
 
-  this.package.buildVersion.history.push(`${buildType} - ${major}.${minor}.${snap} to ${this.package.version} at ${getUTCDate(new Date(Date.now()))}`)
+  this.package.buildVersion.history.push(`${buildType} - ${major}.${minor}.${snap} to ${this.package.version} at ${getUTCDate(new Date())}`)
 
   this.compilateur();
 };
 
+/*
+* compilateur
+*/
 ThoriumBuilder.prototype.compilateur = async function () {
   const self = this;
-  await self.isBuildFolderExist();
-  new Promise(async function(next,err){
 
-    function readFile(filePath,i){
-      console.log(`... lecture ... ${filePath} ...`);
-      return new Promise(function(next){
-        fs.readFile(filePath, 'utf8', async function (err,data) {
-          if (err) next(console.error(`\x1b[31m${filePath}\x1b[0m ne semble pas exister ou l'ortographe est mauvais ?`));
-          else next({i:i,data:data});
-        });
+  function readFolder(folderPath,i){
+    console.log(`... Folder ... ${folderPath} ...`);
+    return new Promise(function(next){
+      fs.readdir(folderPath,function(err,data){
+        if (err) next(console.error(`\x1b[31m${filePath}\x1b[0m ne semble pas exister ou l'ortographe est mauvais ?`));
+        next(data);
       })
-    }
-
-
-    const x = [];
-    for await(const i of Array.from({length : self.files.length} , (x,i) => i)){
-      const fileName = self.files[i] , filePath = path.join(path.join(__dirname,'dist'),fileName);
-      await readFile(filePath,i)
-      .then(function(result){
-        console.log(`... compilation ... ${fileName} ...`);
-        x.push(result.data);
-        if(result.i == self.files.length - 1)next(x.join('\n'));
-      })
-    }
-  })
-  .then(function(result){
-    fs.writeFile(path.join(path.join(__dirname,'build'),`thorium_v${self.fullVersion}.js`), result, 'utf8',function(){
-      console.log(`resultat de compilation ${path.join(path.join(__dirname,'build'),`thorium_v${self.fullVersion}.js`)}`);
     })
-  })
-  .then(function(){
-    self.writePackage();
-  })
+  }
+
+  function readFile(filePath,i){
+    console.log(`... lecture ... ${filePath} ...`);
+    return new Promise(function(next){
+      fs.readFile(filePath, 'utf8', async function (err,data) {
+        if (err) next(console.error(`\x1b[31m${filePath}\x1b[0m ne semble pas exister ou l'ortographe est mauvais ?`));
+        else next({i:i,data:data});
+      });
+    })
+  }
+
+  await self.isBuildFolderExist();
+  if(self.buildType == 'snap' || self.buildType == 'minor' || self.buildType == 'major'){
+    new Promise(async function(next,err){
+
+      // function readFile(filePath,i){
+      //   console.log(`... lecture ... ${filePath} ...`);
+      //   return new Promise(function(next){
+      //     fs.readFile(filePath, 'utf8', async function (err,data) {
+      //       if (err) next(console.error(`\x1b[31m${filePath}\x1b[0m ne semble pas exister ou l'ortographe est mauvais ?`));
+      //       else next({i:i,data:data});
+      //     });
+      //   })
+      // }
+
+
+      const x = [];
+      for await(const i of Array.from({length : self.files.length} , (x,i) => i)){
+        const fileName = self.files[i] , filePath = path.join(path.join(__dirname,'dist'),fileName);
+        await readFile(filePath,i)
+        .then(function(result){
+          console.log(`... compilation ... ${fileName} ...`);
+          x.push(result.data);
+          if(result.i == self.files.length - 1)next(x.join('\n'));
+        })
+      }
+    })
+    .then(function(result){
+      fs.writeFile(path.join(path.join(__dirname,'build'),`thorium_v${self.fullVersion}.js`), result, 'utf8',function(){
+        console.log(`resultat de compilation ${path.join(path.join(__dirname,'build'),`thorium_v${self.fullVersion}.js`)}`);
+      })
+    })
+    .then(function(){
+      self.writePackage();
+    })
+  }
+  if(self.buildType == 'caches'){
+    new Promise(function(next){
+      const caches = {
+        svg : {}
+      };
+      readFolder(path.join(__dirname,'res'))
+      .then(function(resFiles){
+        for(const i of Array.from({length : resFiles.length},(x,i) => i)){
+          const fileName = resFiles[i];
+          if(path.extname(fileName).split('.').join(``) == 'svg'){
+            readFile(path.join(__dirname,path.join('res',fileName)),i)
+            .then(function(fileData){
+              caches.svg[fileName.split('.')[0]] = fileData.data;
+              if(fileData.i == resFiles.length - 1)next(caches);
+            })
+          }else{console.error(`\x1b[31m${fileName}\x1b[0m n'est pas un svg`);}
+        }
+      })
+    })
+    .then(function(result){
+      fs.writeFile(path.join(path.join(__dirname,'build'),`caches.js`), `thorium.caches = ${stringify(result,null,2)}`, 'utf8',function(){
+        console.log(`resultat de compilation ${path.join(path.join(__dirname,'build'),`caches.js`)}`);
+      })
+    })
+  }
 };
 
 new ThoriumBuilder([
@@ -181,4 +233,5 @@ new ThoriumBuilder([
   'thorium.js', // module thorium-core
   'dialog.js', // module thorium dialog offrant les boites de dialogues thorium
   'components.js', // module thorium contenant les components basiques de thorium
+  'mobile.js', // module thorium pour thorium mobile
 ]);
