@@ -3842,7 +3842,7 @@ class Form extends thorium.components{
           onMouseDown : function(e){
 
           }
-        });
+        })
       ]
     }
 
@@ -4230,13 +4230,24 @@ class MobileMenu{
 
 }
 
+MobileMenu.prototype.push = function (svgIcon) {
+  this.add(svgIcon);
+  this.rebuild();
+};
+
+MobileMenu.prototype.pop = function(svgIcon){
+  this.remove(svgIcon);
+  this.rebuild();
+}
+
 MobileMenu.prototype.add = function (svgIcon) {
+  console.log(svgIcon.name);
   this.buttons[svgIcon.name] = (new svgIcon()).ui;
   this.updateUI();
 };
 
-MobileMenu.prototype.remove = function (iconName) {
-  delete this.buttons[iconName];
+MobileMenu.prototype.remove = function (svgIcon) {
+  delete this.buttons[svgIcon.name];
   this.updateUI();
 };
 
@@ -4247,7 +4258,6 @@ MobileMenu.prototype.removeAll = function () {
 
 MobileMenu.prototype.rebuild = function () {
   document.querySelectorAll('mobilemenu')[0].children[0].innerHTML = '';
-  console.log(this.ui[0].childrens.ui[0].childrens);
   this.ui[0].childrens.ui[0].childrens.buildIn(document.querySelectorAll('mobilemenu')[0].children[0])
   .then(function(){
     document.querySelectorAll('mobilemenu')[0].initialise();
