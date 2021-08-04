@@ -6,6 +6,18 @@ class premierWidget extends leftWidget{
   }
 }
 
+class deuxiemeWidget extends rightWidget{
+  constructor(app){
+    super(new Text('deuxiemeWidget'),app)
+  }
+}
+
+class test_topWidget extends topWidget{
+  constructor(app){
+    super(new Text('test_topWidget'),app)
+  }
+}
+
 class premierWidget2 extends bottomWidget{
   constructor(app){
     super(new inscriptionPage(),app)
@@ -270,6 +282,12 @@ thorium.onReady = async function(self){
         ],
         bottom : [
           premierWidget2
+        ],
+        right : [
+          deuxiemeWidget
+        ],
+        top : [
+          test_topWidget
         ]
       },
     }

@@ -3249,6 +3249,7 @@ THORIUM_ENGINE.prototype.initialise = async function (arg = null){
 
   // if(this.conf.stats = true)self.stats = new STATS(this);
   // if(this.conf.filters = true)self.filters = new FILTRES(this);
+
   this.conf.app.initialise();
   this.entities.initialise();
 }
@@ -3868,10 +3869,6 @@ class SVGBtn extends thorium.components{
   }
 }
 
-// MobileApp //
-
-// A COPIER //
-
 class MobileApp{
   constructor(arg = null){
     if(typeof arg != "object" && Array.isArray(arg) == false)throw {msg:"arg doit être un object",r:arg};
@@ -3926,14 +3923,14 @@ class MobileApp{
         })(this) );
         if(arg.widgets.top || arg.widgets.top == true)this.top = (arg.widgets.left == true ? {} : (function(self){
           self.top = {};
-          for(var w of arg.widgets.left){
+          for(var w of arg.widgets.top){
             new w(self);
           }
           return self.top;
         })(this) );
         if(arg.widgets.right || arg.widgets.right == true)this.right = (arg.widgets.left == true ? {} : (function(self){
           self.right = {};
-          for(var w of arg.widgets.left){
+          for(var w of arg.widgets.right){
             new w(self);
           }
           return self.right;
