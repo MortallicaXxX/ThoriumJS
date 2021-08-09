@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+
+  </body>
+  <script src="../build/thorium.js" type="text/javascript"></script>
+  <script src="./caches.js" type="text/javascript"></script>
+  <script type="text/javascript">
+
+    thorium.onReady = function(self){
+
+      self.GUI([
+        new App({
+          prop : {id : 'app'},
+          childrens : [
+            new Article({
+              childrens : [
+                new H1({text : 'testH1', proto : {onMouseDown : function(){
+                  alert('test')
+                }}}),
+                new H2('testH2'),
+                new H3({text : 'testH3'}),
+                new H4({text : 'testH4'}),
+                new H5({text : 'testH5'}),
+                new H6({text : 'testH6'}),
+                new Input({prop:{label:'label'},proto:{onMouseDown : function(){
+                  alert('test')
+                }}}),
+                new Form({
+                  body : new Container({
+                    childrens : [new Text('Test','center')]
+                  }),
+                  buttons : [
+                    {text:'Annuler'},
+                    {text:'Accepter',formAction:'/a'},
+                    {text:'zoulou',formAction:'/a'},
+                  ]
+                }),
+                new Text(thorium.caches.svg.coin)
+              ]
+            }),
+            new Code("<test>TestCode</test>")
+          ]
+        })
+      ])
+      .buildIn(document.body)
+
+    }
+
+    addCss('testStyle',[`
+      app {
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        top: 0;
+        left: 0;
+        display: grid;
+      }
+
+      app > article {
+        height: 100%;
+        width: 100%;
+        display: grid;
+      }
+    `])
+
+  </script>
+</html>
