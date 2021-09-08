@@ -1,6 +1,159 @@
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const stringify = require('json-stringify');
+const hash = require('hash.js')
+
+const colors = {
+  Reset : "\x1b[0m",
+  Bright : "\x1b[1m",
+  Dim : "\x1b[2m",
+  Underscore : "\x1b[4m",
+  Blink : "\x1b[5m",
+  Reverse : "\x1b[7m",
+  Hidden : "\x1b[8m",
+
+  FgBlack : "\x1b[30m",
+  FgRed : "\x1b[31m",
+  FgGreen : "\x1b[32m",
+  FgYellow : "\x1b[33m",
+  FgBlue : "\x1b[34m",
+  FgMagenta : "\x1b[35m",
+  FgCyan : "\x1b[36m",
+  FgWhite : "\x1b[37m",
+
+  BgBlack : "\x1b[40m",
+  BgRed : "\x1b[41m",
+  BgGreen : "\x1b[42m",
+  BgYellow : "\x1b[43m",
+  BgBlue : "\x1b[44m",
+  BgMagenta : "\x1b[45m",
+  BgCyan : "\x1b[46m",
+  BgWhite : "\x1b[47m",
+}
+
+/*
+* ========= CDNConnector =========
+* Connector pour upload sur le serveur cdn la dernière version de thorium
+*/
+
+class CDNConnector{
+
+  FormData = require('form-data');
+  axios = require('axios').default;
+  axiosLimit = 20000; // en utilisant axios il faut partir du principe que la longueur max de la requete est de 20000 bytes
+  uid = Date.now(); // Valeur int représentant l'id du cdn connector ( permet coté serveur de savoir quel est la session )
+
+  constructor(version,parameters){
+    const self = this;
+    const filePath = `./build/thorium_v${version}.js`;
+
+    self._isUser(parameters)
+    .then(function(result){
+      if(!result)console.log(`${colors.FgRed}User ou Mot de passe erroné.${colors.FgWhite}`);
+      else{
+        const fileBuff = fs.readFileSync(filePath);
+
+        const chunks = self._chunk(fileBuff);
+        chunks.totalLength = (function(chu){
+          var tl = 0;
+          chu.lengths = Array.from({length : chu.length} , function(x,i){
+            tl += chu[i].length;
+            return chu[i].length;
+          })
+          return tl;
+        })(chunks)
+        console.log(`Division du fichier de ${colors.FgMagenta}${fileBuff.length} bytes${colors.FgWhite} en ${colors.FgYellow}${chunks.length}${colors.FgWhite} chunks.`);
+        self._sender(0,chunks)
+        .then(function(){
+
+        })
+        .catch(function(err){
+          console.log(err);
+        })
+      }
+    })
+  }
+}
+
+// créer des chunk ne dépassant pas la longueur définie par axios
+CDNConnector.prototype._chunk = function (buffData) {
+  const self = this;
+  // permet de faire un round up
+  function roundUp(num, precision) {
+    precision = Math.pow(10, precision)
+    return Math.ceil(num * precision) / precision
+  }
+
+  return (
+    buffData.length < self.axiosLimit ?
+    Array.from({length : buffData.length} , (x,i) => buffData[i])
+    :
+    Array.from({length : roundUp(buffData.length / self.axiosLimit , 0)} , function(x,i){
+      let min = self.axiosLimit * i;
+      let max = (self.axiosLimit * (i + 1));
+      return (max > buffData.length ? buffData.slice(min , buffData.length) : buffData.slice(min , max))
+    })
+  );
+};
+
+CDNConnector.prototype._sender = function (current_sess,chunks) {
+  const self = this;
+  var r;
+  return new Promise(function(next,reject){
+    self.axios({
+      method: 'post',
+      url: process.env.CDN_URL+process.env.PATH_UPDATE,
+      data: {
+        uid_sess : self.uid,
+        sess : current_sess,
+        max_sess : chunks.length -1,
+        buff : chunks[current_sess]
+      }
+    })
+    .then(function(result){
+      if(result.data.status == 'Error')r = `${colors.FgRed}${result.data.msg.message}${colors.FgWhite}`;
+      if(result.data.status != 'Error')console.log(`...Update du fichier en cours...${colors.FgYellow}${result.data.count}${colors.FgWhite} de ${colors.FgMagenta}${chunks[current_sess].length} bytes, ${(function(){
+        var x = 0;
+        for(const i of Array.from({length : current_sess + 1} , (x,i) => i)){
+          x += chunks.lengths[i];
+          if(i == current_sess)return x;
+        }
+      })()}/${chunks.totalLength} bytes ${colors.FgWhite} envoyé...`);
+      if(result.data.status == 'End')(result.data.result == true ? console.log(`${colors.FgGreen}Fichier thorium à jour.${colors.FgWhite}`) : console.log(`${colors.FgRed}Erreur l'ors de l'envois.${colors.FgWhite}`) );
+    })
+    .catch(async function(err){
+      // reject(err.toJSON());
+    })
+    .then(async function () {
+      if(current_sess == chunks.length -1 && !r)next(console.log(`${colors.FgYellow}${current_sess}/${chunks.length -1}${colors.FgWhite} packets on été envoyer.`));
+      else if(r)next(console.log(r));
+      else next(self._sender(current_sess+1,chunks))
+    });
+  });
+};
+
+CDNConnector.prototype._isUser = function (arg) {
+  const self = this;
+  return new Promise(function(next,reject){
+    self.axios({
+      method: 'post',
+      url: process.env.CDN_URL+process.env.PATH_Auth,
+      data: arg
+    })
+    .then(async function(result){
+      next(result.data);
+    })
+    .catch(async function(err){
+      next(false);
+    })
+  })
+};
+
+/*
+* ========= THORIUM BUILDER =========
+* Compilateur de thorium
+*/
 
 class ThoriumBuilder{
 
@@ -16,6 +169,7 @@ class ThoriumBuilder{
         if(self.buildType == 'snap')self.builder();
         else if(self.buildType == 'minor')self.builder();
         else if(self.buildType == 'major')self.builder();
+        else if(self.buildType == 'update')new CDNConnector(self.version.join('.'),{user:parameters[1],mdp:parameters[2]});
         else if(self.buildType == 'caches')self.compilateur();
         else console.error(`Vous ne spécifier pas le type d'update 'snap' 'minor' 'major'`);
       })

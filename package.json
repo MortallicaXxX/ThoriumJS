@@ -1,13 +1,20 @@
 {
   "name": "thoriumjs",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "description": "Framework client-side javascrit",
   "main": "compil.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "update": "npm run build update",
+    "snap": "npm run build snap",
+    "minor": "npm run build minor",
+    "major": "npm run build major",
+    "snap&update": "npm run build snap && npm run update",
+    "minor&update": "npm run build minor && npm run update",
+    "major&update": "npm run build major && npm run update"
   },
   "repository": {
     "type": "git",
@@ -20,6 +27,12 @@
   },
   "homepage": "https://github.com/MortallicaXxX/ThoriumJS#readme",
   "dependencies": {
+    "axios": "^0.21.4",
+    "dotenv": "^10.0.0",
+    "form-data": "^4.0.0",
+    "hash.js": "^1.1.7",
+    "json-stringify": "^1.0.0",
+    "node-fetch": "^3.0.0",
     "package": "^1.0.1"
   },
   "buildVersion": {
@@ -30,7 +43,8 @@
       "snap - 2.0.4 to 2.0.5 at 4/7/2021 16:26:53.695",
       "snap - 2.0.5 to 2.0.6 at 4/7/2021 19:21:29.239",
       "snap - 2.0.6 to 2.0.7 at 9/7/2021 19:3:15.579",
-      "snap - 2.0.7 to 2.0.8 at 7/8/2021 12:10:29.769"
+      "snap - 2.0.7 to 2.0.8 at 7/8/2021 12:10:29.769",
+      "snap - 2.0.8 to 2.0.9 at 7/8/2021 20:0:24.820"
     ]
   }
 }
