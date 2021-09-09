@@ -13,7 +13,7 @@ jsfiddle sample ( conf , onReady , simple component ) : https://jsfiddle.net/Mor
 
 Les listeners
 Thorium met à disposition des handlers et rend les éléments "self-listeners".
-Des thoirum handlers peuvent être utiliser , ainsi que des components handlers inhérent à chaque components.
+Des thorium handlers peuvent être utiliser , ainsi que des components handlers inhérent à chaque components.
 
 Thorium Handlers :
 - keydown
@@ -39,4 +39,36 @@ Components Handlers :
 - onFrameUpdate
 - onResize
 
-Sample Thorium Handlers & Thorium Handlers(onInitialise) : https://jsfiddle.net/MortallicaXxX/tdrjgpL6/50/
+Sample Thorium Handlers & Components Handlers(onInitialise) : https://jsfiddle.net/MortallicaXxX/tdrjgpL6/50/
+
+Les Components
+Thorium met à disposition thorium.components qui permet la création de components utilisable par thorium.
+Ils sont des UIelements, mais permettent de créer un élément , son comportement ainsi que ses héritages et de l'appeler quand on veut.
+Plusieurs components généraux sont déjà définis pour aider, mais il est tout à fait possible de créer ses propres components.
+
+Components :
+
+ - App
+ - Main
+ - Nav
+ - Article
+ - Section
+ - Aside
+ - Text
+ - Div
+ - Container
+ - Ccontainer
+ - Form
+ - SVGBtn
+ - Button
+ - Input
+ - Textarea
+ - H1
+ - H2
+ - H3
+ - H4
+ - H5
+ - H6
+ - List
+
+jsfiddle sample : https://jsfiddle.net/MortallicaXxX/2e6ymrca/103/
