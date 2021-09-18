@@ -1,6 +1,6 @@
 {
   "name": "thoriumjs",
-  "version": "2.0.9",
+  "version": "2.0.14",
   "description": "Framework client-side javascrit",
   "main": "compil.js",
   "directories": {
@@ -12,9 +12,9 @@
     "snap": "npm run build snap",
     "minor": "npm run build minor",
     "major": "npm run build major",
-    "snap&update": "npm run build snap && npm run update",
-    "minor&update": "npm run build minor && npm run update",
-    "major&update": "npm run build major && npm run update"
+    "snap-update": "npm run build snap && npm run update",
+    "minor-update": "npm run build minor && npm run update",
+    "major-update": "npm run build major && npm run update"
   },
   "repository": {
     "type": "git",
@@ -44,7 +44,12 @@
       "snap - 2.0.5 to 2.0.6 at 4/7/2021 19:21:29.239",
       "snap - 2.0.6 to 2.0.7 at 9/7/2021 19:3:15.579",
       "snap - 2.0.7 to 2.0.8 at 7/8/2021 12:10:29.769",
-      "snap - 2.0.8 to 2.0.9 at 7/8/2021 20:0:24.820"
+      "snap - 2.0.8 to 2.0.9 at 7/8/2021 20:0:24.820",
+      "snap - 2.0.9 to 2.0.10 at 15/8/2021 10:29:40.243",
+      "snap - 2.0.10 to 2.0.11 at 15/8/2021 10:33:6.921",
+      "snap - 2.0.11 to 2.0.12 at 15/8/2021 10:41:46.184",
+      "snap - 2.0.12 to 2.0.13 at 15/8/2021 11:0:43.639",
+      "snap - 2.0.13 to 2.0.14 at 17/8/2021 16:26:19.305"
     ]
   }
 }
