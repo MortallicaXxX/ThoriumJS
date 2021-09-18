@@ -3063,6 +3063,7 @@ class THORIUM_ENGINE{
                   prop:{id:'bckg1',text:th_caches.svg.th_bg1},
                   proto : {
                     updateBackgroundPosition : function(){
+
                     }
                   }
                 },
@@ -4550,7 +4551,7 @@ class DropDown extends thorium.components{
         onInitialise : function(){
           const _self = this;
 
-          _self.DropResContainer.Value = document.getElementById('DropResContainer')
+          _self.DropResContainer.set(document.getElementById('DropResContainer'))
 
         },
         push : function(value){
@@ -4559,7 +4560,7 @@ class DropDown extends thorium.components{
             proto : {
               _value : value,
               onMouseDown : function(){
-                this.e.parentNode.parentNode.children[0].value = this._value.Value;
+                this.e.parentNode.parentNode.children[0].value = this._value.get();
               },
               onMouseEnter : function(){
                 this.e.style = css({
@@ -4573,7 +4574,7 @@ class DropDown extends thorium.components{
               }
             }
           })])
-          .buildIn(this.DropResContainer.Value)
+          .buildIn(this.DropResContainer.get())
         },
         pop : function(){
 
