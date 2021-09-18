@@ -1381,7 +1381,7 @@ class THORUS{
           // self.e[protoName] = function(){ // création de la fonction qui servira de getter
           //   self.e[protoName] = self[protoName];
           // }
-          self[protoName] = Var(self[protoName]);
+          self[protoName] = new th_var(self[protoName]);
           self.e[protoName] = self[protoName];
         }catch(err){
           console.error(err);
@@ -1561,7 +1561,7 @@ class THORUS{
           // }
           // if(typeof self[protoName] == 'boolean')self.e[protoName] = new Boolean(self[protoName])
           // else self.e[protoName] = self[protoName];
-          self[protoName] = Var(self[protoName]);
+          self[protoName] = new th_var(self[protoName]);
           self.e[protoName] = self[protoName];
 
           // self.e[protoName] = self[protoName];
@@ -3427,7 +3427,6 @@ class THORIUM_ENGINE{
     window.post = async function(url = null ,arg = null){
       return self.post(url,arg);
     }
-    window.Var = function(x){return new (new THORUS()).Var(x)};
 
     self.caches = new ThoriumCaches(self);
     window.th_caches = self.caches.data;

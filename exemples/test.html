@@ -7,7 +7,7 @@
   <body>
 
   </body>
-  <script src="https://thoriumcdn.herokuapp.com/cdn/thorium.js" type="text/javascript"></script>
+  <script src="../build/thorium.js" type="text/javascript"></script>
   <script type="text/javascript">
 
     thorium.conf = {
@@ -33,6 +33,7 @@
           },
           childrens : [new Text('Hello','center')],
           proto : {
+            test : 1,
             onMouseDown : function(){
               this.turnActive();
             }
