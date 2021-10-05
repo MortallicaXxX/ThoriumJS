@@ -2713,91 +2713,6 @@ UI.prototype.each = function (f) {
   })
 };
 
-UI.prototype.BuildIn = function(parent , template = null) {
-  const _this = this;
-  const toGenerate = (template ? template.templates : _this.ui); // si pas de template , récuperation du template dans ui de l'élément lui même
-
-  /*
-  *
-  */
-  function generate(i = 0){
-    const genLength = toGenerate.length - 1;
-
-    return new Promise(function(next){
-      const element = toGenerate[i];
-
-      if(document.createElement(element.type).__proto__.constructor.name == 'HTMLUnknownElement'){
-
-        element.type = `thorium-${element.type}`;
-
-        const C = class extends HTMLElement{
-          constructor(){
-            super();
-          }
-
-          connectedCallback() {
-            // browser calls this method when the element is added to the document
-            // (can be called many times if an element is repeatedly added/removed)
-          }
-
-          disconnectedCallback() {
-            // browser calls this method when the element is removed from the document
-            // (can be called many times if an element is repeatedly added/removed)
-          }
-
-          static get observedAttributes() {
-            return [/* array of attribute names to monitor for changes */];
-          }
-
-          attributeChangedCallback(name, oldValue, newValue) {
-            // called when one of attributes listed above is modified
-          }
-
-          adoptedCallback() {
-            // called when the element is moved to a new document
-            // (happens in document.adoptNode, very rarely used)
-          }
-
-        }
-
-        Object.defineProperty (C, 'name', {value: `thorium-${element.type}`});
-
-        customElements.define(`thorium-${element.type}`, C);
-
-      }
-
-      const child = document.createElement(element.type); // création de l'élément
-
-      //
-      if('prop' in element) Array.from({length : Object.keys(element.prop).length} , function(x,i){
-        let propName = Object.keys(element.prop)[i];
-        if(propName == "text")child.innerHTML=element.prop[propName];
-        else child.setAttribute(propName, element.prop[propName]);
-      });
-
-      child.th = new THORUS( child , element , _this ); //
-      if(_this.root)_this.root.updateTargetElement(child); //
-      parent.appendChild(child); //
-
-      // if(i == genLength)next(generate(i++))
-      // else next(element);
-
-      if('childrens' in element && element.childrens.ui.length > 0)element.childrens.BuildIn(child).then(function(){
-        if(i == genLength)next(child);
-        else next(generate(i++));
-      })
-      else{
-        if(i == genLength)next(child);
-        else next(generate(i++));
-      }
-    })
-
-  }
-
-  return generate();
-
-}
-
 /*
 *@{name} buildIn
 *@{type}
@@ -2834,7 +2749,6 @@ UI.prototype.buildIn = function(parent , template = null) {
             try{
               generate(await elem.childrens.buildIn(child))
             }catch(err){
-
             }
           }else{generate(child)}
         }
@@ -2986,8 +2900,8 @@ GUI.prototype.update = function (arg = null) {
 *@{type} REFERENCE
 *@{descriptif} Fonction de référence qui appel GUI.UI.buildIn()
 */
-GUI.prototype.BuildIn = function (target , template = null) {
-  return Promise.resolve(this.ui.BuildIn(target , template));
+GUI.prototype.buildIn = function (target , template = null) {
+  return Promise.resolve(this.ui.buildIn(target , template));
 }
 
 /*
@@ -3673,47 +3587,19 @@ THORIUM_ENGINE.prototype.post = async function (url = null,arg = null){
 }
 
 THORIUM_ENGINE.prototype.components = function(e,root,parent){
+  // var self = thorium;
+  // var componentClassName = new.target.name;
+  // // console.log(thorium.componentsList[componentClassName]);
+  // try{
+  //   if(self.componentsList[componentClassName])throw {err:1,msg:"Vous esseillez d'ajouter un component déjà existant."}
+  //   self.componentsList[componentClassName] = function(e,root,parent){return new UIelement(e,root,parent)};
+  //   return self.componentsList[componentClassName](e,root,parent);
+  // }catch(err){
+  //   return self.componentsList[componentClassName](e,root,parent);
+  // }
 
-  let componentName = new.target.name;
+  return new UIelement(e,root,parent)
 
-  if(componentName in thorium.componentsList == false){
-
-    thorium.componentsList[componentName] = class extends HTMLElement {
-      constructor() {
-        super();
-      }
-
-      connectedCallback() {
-        // browser calls this method when the element is added to the document
-        // (can be called many times if an element is repeatedly added/removed)
-      }
-
-      disconnectedCallback() {
-        // browser calls this method when the element is removed from the document
-        // (can be called many times if an element is repeatedly added/removed)
-      }
-
-      static get observedAttributes() {
-        return [/* array of attribute names to monitor for changes */];
-      }
-
-      attributeChangedCallback(name, oldValue, newValue) {
-        // called when one of attributes listed above is modified
-      }
-
-      adoptedCallback() {
-        // called when the element is moved to a new document
-        // (happens in document.adoptNode, very rarely used)
-      }
-
-      // there can be other element methods and properties
-    }
-
-    customElements.define(`thorium-${componentName.toLowerCase()}`, thorium.componentsList[componentName]);
-
-  }
-
-  return new UIelement(e,root,parent);
 }
 
 THORIUM_ENGINE.prototype.entity = function(name){
@@ -4099,7 +3985,6 @@ class App extends thorium.components{
       childrens : arg.childrens,
       proto : arg.proto
     })
-    // console.log(new.target.name);
   }
 }
 
@@ -4605,7 +4490,7 @@ class DropDown extends thorium.components{
         onInitialise : function(){
           const _self = this;
 
-          _self.DropResContainer.Value = document.getElementById('DropResContainer')
+          _self.DropResContainer.set(document.getElementById('DropResContainer'))
 
         },
         push : function(value){
@@ -4614,7 +4499,7 @@ class DropDown extends thorium.components{
             proto : {
               _value : value,
               onMouseDown : function(){
-                this.e.parentNode.parentNode.children[0].value = this._value.Value;
+                this.e.parentNode.parentNode.children[0].value = this._value.get();
               },
               onMouseEnter : function(){
                 this.e.style = css({
@@ -4628,7 +4513,7 @@ class DropDown extends thorium.components{
               }
             }
           })])
-          .buildIn(this.DropResContainer.Value)
+          .buildIn(this.DropResContainer.get())
         },
         pop : function(){
 
