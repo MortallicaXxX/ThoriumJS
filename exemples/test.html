@@ -27,19 +27,14 @@
               height : '100%',
               background : 'red'
             }),
-            hoverStyle : css({background : 'blue'}),
-            activeStyle : css({background : 'yellow'})
+            //hoverStyle : css({background : 'blue'}),
+            //activeStyle : css({background : 'yellow'})
           },
-          childrens : [new Text('Hello','center')],
+          childrens : [
+            new H1('Hello','center'),
+          ],
           proto : {
             test : null,
-            onInitialise : async function(){
-              console.log(this.test.Type());
-              this.test.Value = 1;
-              console.log(this.test);
-              this.test.Value = "lol";
-              console.log(this.test);
-            },
             onMouseDown : function(){
               this.turnActive();
             }

@@ -1,6 +1,6 @@
 {
   "name": "thoriumjs",
-  "version": "2.0.28",
+  "version": "2.0.29",
   "description": "Framework client-side javascrit",
   "main": "compil.js",
   "directories": {
@@ -63,7 +63,8 @@
       "snap - 2.0.24 to 2.0.25 at 5/9/2021 9:11:16.292",
       "snap - 2.0.25 to 2.0.26 at 5/9/2021 9:15:49.791",
       "snap - 2.0.26 to 2.0.27 at 5/9/2021 9:22:43.261",
-      "snap - 2.0.27 to 2.0.28 at 5/9/2021 9:49:20.543"
+      "snap - 2.0.27 to 2.0.28 at 5/9/2021 9:49:20.543",
+      "snap - 2.0.28 to 2.0.29 at 5/9/2021 10:47:40.207"
     ]
   }
 }
