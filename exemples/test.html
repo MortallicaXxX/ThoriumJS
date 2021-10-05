@@ -7,7 +7,7 @@
   <body>
 
   </body>
-  <script src="../build/thorium_v2.0.26.js" type="text/javascript"></script>
+  <script src="../build/thorium.js" type="text/javascript"></script>
   <script type="text/javascript">
 
     thorium.conf = {
@@ -32,7 +32,14 @@
           },
           childrens : [new Text('Hello','center')],
           proto : {
-            test : 1,
+            test : null,
+            onInitialise : async function(){
+              console.log(this.test.Type());
+              this.test.Value = 1;
+              console.log(this.test);
+              this.test.Value = "lol";
+              console.log(this.test);
+            },
             onMouseDown : function(){
               this.turnActive();
             }
