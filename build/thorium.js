@@ -3429,7 +3429,7 @@ class THORIUM_ENGINE{
           }
         `])
 
-        self.gui.buildIn(document.body)
+        self.gui.BuildIn(document.body)
         .then(function(){
           self.initialise();
         })
